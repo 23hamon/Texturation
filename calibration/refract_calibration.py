@@ -1,4 +1,4 @@
-from utils import reconstruct_3d_point_refract, trace_refract_ray
+from Texturation.utils import reconstruct_3d_point_refract, trace_refract_ray
 import os
 #os.environ["OMP_NUM_THREADS"] = "1"
 import numpy as np
