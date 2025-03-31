@@ -13,9 +13,9 @@ import scipy
 from scipy.optimize import least_squares, differential_evolution, direct, dual_annealing, minimize
 from numba import njit
 import open3d as o3d
-from utils import reconstruct_3d_points
+from Texturation.utils import reconstruct_3d_points
 from calibration_utils import find_corners, find_circles
-from utils import trace_refract_ray, reconstruct_3d_point_refract
+from Texturation.utils import trace_refract_ray, reconstruct_3d_point_refract
 from pairs_lists import *
 from refract_calibration import calibrate_stereo_refract_global2, calibrate_stereo_air_global
 from time import sleep

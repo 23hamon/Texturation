@@ -9,12 +9,12 @@ using namespace Eigen;
 
 
 static inline std::pair<Vector3f, Vector3f> trace_refract_ray(
-    const Vector2f pixel_coord,
-    const Matrix<float, 3, 3, Eigen::RowMajor> air_K_inv,
-    const float distance,
-    const Vector3f normal,
-    const float thickness,
-    const float eta_glass,
+    const Vector2f pixel_coord, // Y(x,y) coordonees du pixel dans l'image
+    const Matrix<float, 3, 3, Eigen::RowMajor> air_K_inv, // inverse de la matrice de la camera
+    const float distance, // distance entre l'origine et le debut du verre
+    const Vector3f normal, // vecteur normal au verre (normalise) <---
+    const float thickness, // epaisseur du verre
+    const float eta_glass, // indices optiques
     const float eta_water
 ) {
     Vector3f pixel_coord_proj = {pixel_coord(0), pixel_coord(1), 1.};
