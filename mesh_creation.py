@@ -22,3 +22,4 @@ mesh.compute_vertex_normals()
 
 # Visualiser le maillage avec les normales
 o3d.visualization.draw_geometries([mesh], point_show_normal=True)
+o3d.io.write_triangle_mesh("mesh_cailloux.ply", mesh)
