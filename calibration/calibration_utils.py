@@ -14,7 +14,7 @@ def find_corners(mask, num_corners):
     flags = cv2.CALIB_CB_NORMALIZE_IMAGE
 
     _, corners = cv2.findChessboardCornersSB(down_mask, num_corners)#, flags=flags)
-    return corners
+    return cornersprint(f"Point {i}: {point}")
     ret, corners = cv2.findChessboardCorners(down_mask, num_corners, None)
     #ret, corners = cv2.findChessboardCorners(mask, num_corners, None)
 
