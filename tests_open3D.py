@@ -9,7 +9,7 @@ print(pcd)
 
 # # calculer le mesh 3D
 pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.05, max_nn=50))
-mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=12)
+mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=8)
 
 densities = np.asarray(densities)
 seuil = np.percentile(densities, 2)
