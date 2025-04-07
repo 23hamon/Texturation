@@ -10,7 +10,7 @@ def is_face_in_the_camera_direction(normale_face, normale_image, cos_theta_min:f
 
 # Chargement du mesh entier
 
-mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux.ply")
+mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_low.ply")
 image_path = "downsampled/scene_l_0026.jpeg"
 image = cv2.imread(image_path)
 h, w = image.shape[:2]
