@@ -108,7 +108,8 @@ plt.show()
 # Charger le maillage
 mesh = o3d.io.read_triangle_mesh('fichiers_ply/mesh_visible.ply')
 
-mesh.paint_uniform_color([0.5, 0.5, 0.5])
+mesh.paint_uniform_color([1,1,1])
+
 
 # Nuage de points aléatoires
 point_cloud = o3d.geometry.PointCloud()
