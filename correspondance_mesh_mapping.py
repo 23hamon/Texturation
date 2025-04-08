@@ -131,14 +131,12 @@ o3d.io.write_point_cloud("fichiers_ply/output_mesh_visible.ply", pcd)
 # mesh_id = trimesh.Trimesh(vertices=vertices_id, faces=[[0, 1, 2]],
 #                           face_colors=[[255, 0, 0, 255]])
 
-# # wireframe
 # edges = mesh.edges_unique
 # lines = trimesh.load_path(mesh.vertices[edges])
 # lines.colors = [[0, 0, 0, 255]] * len(lines.entities) 
 
 # point_cloud = trimesh.points.PointCloud(random_points_3d, colors=[0, 0, 255, 255])
 
-# # Scène avec overlay explicite
 # scene = trimesh.Scene()
 # scene.add_geometry(mesh)
 # scene.add_geometry(lines)
