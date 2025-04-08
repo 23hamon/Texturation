@@ -8,11 +8,12 @@ import matplotlib.tri as mtri
 from backprojection import back_projeter
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import pyglet
+from tqdm import tqdm
 
 mesh = trimesh.load_mesh('fichiers_ply/mesh_visible.ply')
 vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
-xatlas.export("maillage_avec_uv.obj", mesh.vertices[vmapping], indices, uvs)
-image = cv2.imread("downsampled/scene_l_0026.jpeg")
+xatlas.export("fichiers_ply/maillage_avec_uv.obj", mesh.vertices[vmapping], indices, uvs)
+image = cv2.imread("downsampled/scene_l_0026.jpeg")[..., ::-1]
 
 
 #                                                                   --- fcts ---
@@ -26,6 +27,7 @@ def generate_random_point(uv1, uv2, uv3):
     
     return r1, r2
     return (1 - r1 - r2) * uv1 + r1 * uv2 + r2 * uv3 #point avec barycentriques 
+
 
 def bilinear_interpolate(image, x, y):
     x0 = int(np.floor(x))
@@ -47,8 +49,9 @@ def bilinear_interpolate(image, x, y):
 # generation des points randoms 3d depuis les coordonnées (U,V) de points random du mapping
 random_points_2d = []
 random_points_3d = []
+print(len(indices))
 
-for face in indices[:100]:
+for face in tqdm(indices):
     uv1, uv2, uv3 = uvs[face]
     for _ in range(20):
         r1, r2 = generate_random_point(uv1, uv2, uv3)
@@ -62,7 +65,7 @@ for face in indices[:100]:
     
 colors = []
 
-for i in range(len(random_points_2d)):
+for i in tqdm(range(len(random_points_2d))):
     uv = random_points_2d[i]
     pt_3d = random_points_3d[i]
     pixel = back_projeter(pt_3d, image, max_cost=None) #backprojection sur l'image
@@ -73,21 +76,17 @@ for i in range(len(random_points_2d)):
         colors.append(color)
 
 print(colors)
-#Colorisation des points 3D
 
-# Liste pour stocker les sphères colorées
-spheres = []
+# colorisation ptn 3d
 
-# Création et colorisation des sphères pour chaque point
-for point_3d, color in zip(random_points_3d, colors):
-    sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
-    sphere.translate(point_3d)  # Positionner la sphère
-    sphere.paint_uniform_color(color / 255.0)  # Normalisation RGB
-    spheres.append(sphere)
+print(random_points_3d)
+print(colors)
 
-# Affichage de toutes les sphères dans une scène Open3D
-o3d.visualization.draw_geometries(spheres)
-
+pcd = o3d.geometry.PointCloud()
+pcd.points = o3d.utility.Vector3dVector(np.array(random_points_3d))
+pcd.colors = o3d.utility.Vector3dVector(np.array(colors) / 255)
+o3d.visualization.draw_geometries([pcd])
+o3d.io.write_point_cloud("fichiers_ply/output_mesh_visible.ply", pcd)
 
 # #                                                       --- verifications---
 
@@ -126,7 +125,7 @@ o3d.visualization.draw_geometries(spheres)
 # face_colors = np.ones((len(mesh.faces), 4)) * 255
 # mesh.visual.face_colors = face_colors
 
-# # Extraire face 65 comme un mesh à part
+#face à part pour comparaison
 # vertices_id = mesh.vertices[vmapping[indices[face_id]]]
 # faces_id = mesh.faces[indices[face_id]]
 # mesh_id = trimesh.Trimesh(vertices=vertices_id, faces=[[0, 1, 2]],
