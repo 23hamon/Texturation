@@ -2,7 +2,6 @@ from utils import r0_rd, distance_X_to_D_r0_rd
 import open3d as o3d
 import numpy as np
 import cv2
-
 from scipy.optimize import minimize
 
 def back_projeter(X,
