@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
 from backprojection import back_projeter
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import pyglet
 
-
-mesh = trimesh.load_mesh('fichiers_ply/mesh_cailloux_min.ply')
+mesh = trimesh.load_mesh('fichiers_ply/mesh_visible.ply')
 vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
 xatlas.export("maillage_avec_uv.obj", mesh.vertices[vmapping], indices, uvs)
 image = cv2.imread("downsampled/scene_l_0026.jpeg")
@@ -48,28 +48,21 @@ def bilinear_interpolate(image, x, y):
 random_points_2d = []
 random_points_3d = []
 
-for face in indices:
+for face in indices[:100]:
     uv1, uv2, uv3 = uvs[face]
-    for _ in range(3):
+    for _ in range(20):
         r1, r2 = generate_random_point(uv1, uv2, uv3)
         pt_uv = (1 - r1 - r2) * uv1 + r1 * uv2 + r2 * uv3
         random_points_2d.append(pt_uv)
 
         vertices = mesh.vertices[vmapping[face]]
-
         pt_3d =  (1 - r1 - r2) * vertices[0] + r1 * vertices[1] + r2 * vertices[2]
         random_points_3d.append(pt_3d)
 
-
-
-
-#                                                       --- verifications---
-
-
-# --- verification de la correspondance UV -> 3D ---
+    
 colors = []
 
-for i in range(3):
+for i in range(len(random_points_2d)):
     uv = random_points_2d[i]
     pt_3d = random_points_3d[i]
     pixel = back_projeter(pt_3d, image, max_cost=None) #backprojection sur l'image
@@ -78,43 +71,79 @@ for i in range(3):
         X, Y = pixel
         color = bilinear_interpolate(image, X, Y) #obtention couleur pixel
         colors.append(color)
+
+print(colors)
+#Colorisation des points 3D
+
+# Liste pour stocker les sphères colorées
+spheres = []
+
+# Création et colorisation des sphères pour chaque point
+for point_3d, color in zip(random_points_3d, colors):
+    sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
+    sphere.translate(point_3d)  # Positionner la sphère
+    sphere.paint_uniform_color(color / 255.0)  # Normalisation RGB
+    spheres.append(sphere)
+
+# Affichage de toutes les sphères dans une scène Open3D
+o3d.visualization.draw_geometries(spheres)
+
+
+# #                                                       --- verifications---
+
+
         
-#         print(f"UV: {uv} => 3D: {pt_3d} => Pixel: ({pixel}) => Couleur: {color}")
-#         plt.scatter(X, Y, color=color/255.0)  # Normalisation de la couleur pour l'affichage
+# #         print(f"UV: {uv} => 3D: {pt_3d} => Pixel: ({pixel}) => Couleur: {color}")
+# #         plt.scatter(X, Y, color=color/255.0)  # Normalisation de la couleur pour l'affichage
 
-#     else:
-#         print("NOOOOO")
-
-
-#on regarde les points random créés et le maillage
-plt.figure(figsize=(8, 8))
-triang = mtri.Triangulation(uvs[:, 0], uvs[:, 1], indices)
-plt.triplot(triang, color='lightgray', linewidth=0.5)
-face_id = 10 # on choisit une face à colorer pour bien vérifier entre mapping et mesh
-uv_face = uvs[indices[face_id]]
-plt.fill(uv_face[:, 0], uv_face[:, 1], color='blue', alpha=0.5, label="face choisie")
-
-x_coords = [pt[0] for pt in random_points_2d]
-y_coords = [pt[1] for pt in random_points_2d]
-plt.scatter(x_coords, y_coords, c='red', s=5)
-
-plt.gca().invert_yaxis()
-plt.title("points UV générés")
-plt.xlabel("u")
-plt.ylabel("v")
-plt.show()
+# #     else:
+# #         print("NOOOOO")
 
 
-# Charger le maillage
-mesh = o3d.io.read_triangle_mesh('fichiers_ply/mesh_visible.ply')
+# #on regarde les points random créés et le maillage
 
-mesh.paint_uniform_color([1,1,1])
+# plt.figure(figsize=(8, 8))
+# triang = mtri.Triangulation(uvs[:, 0], uvs[:, 1], indices)
+# plt.triplot(triang, color='lightgray', linewidth=0.5)
+# face_id = 10 # on choisit une face à colorer pour bien vérifier entre mapping et mesh
+# uv_face = uvs[indices[face_id]]
+# plt.fill(uv_face[:, 0], uv_face[:, 1], color='blue', alpha=0.5, label="face choisie")
+
+# x_coords = [pt[0] for pt in random_points_2d]
+# y_coords = [pt[1] for pt in random_points_2d]
+# plt.scatter(x_coords, y_coords, c='red', s=5)
+
+# plt.gca().invert_yaxis()
+# plt.title("points UV générés")
+# plt.xlabel("u")
+# plt.ylabel("v")
+# plt.legend()
+# plt.show()
 
 
-# Nuage de points aléatoires
-point_cloud = o3d.geometry.PointCloud()
-point_cloud.points = o3d.utility.Vector3dVector(random_points_3d)
-mesh.compute_vertex_normals()
 
-# Visualisation
-o3d.visualization.draw_geometries([mesh, point_cloud])
+# # # toutes les faces en blanc, sauf la 65 en rouge
+# face_colors = np.ones((len(mesh.faces), 4)) * 255
+# mesh.visual.face_colors = face_colors
+
+# # Extraire face 65 comme un mesh à part
+# vertices_id = mesh.vertices[vmapping[indices[face_id]]]
+# faces_id = mesh.faces[indices[face_id]]
+# mesh_id = trimesh.Trimesh(vertices=vertices_id, faces=[[0, 1, 2]],
+#                           face_colors=[[255, 0, 0, 255]])
+
+# # wireframe
+# edges = mesh.edges_unique
+# lines = trimesh.load_path(mesh.vertices[edges])
+# lines.colors = [[0, 0, 0, 255]] * len(lines.entities) 
+
+# point_cloud = trimesh.points.PointCloud(random_points_3d, colors=[0, 0, 255, 255])
+
+# # Scène avec overlay explicite
+# scene = trimesh.Scene()
+# scene.add_geometry(mesh)
+# scene.add_geometry(lines)
+# scene.add_geometry(point_cloud)
+# scene.add_geometry(mesh_id)  # par-dessus
+
+# scene.show()
