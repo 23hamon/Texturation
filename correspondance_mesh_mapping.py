@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import pyglet
 from tqdm import tqdm
 
-mesh = trimesh.load_mesh('fichiers_ply/mesh_visible.ply')
+mesh = trimesh.load_mesh('fichiers_intermediaires/mesh_visible_low.ply')
 vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
 xatlas.export("fichiers_ply/maillage_avec_uv.obj", mesh.vertices[vmapping], indices, uvs)
 image = cv2.imread("downsampled/scene_l_0026.jpeg")[..., ::-1]
@@ -45,6 +45,7 @@ def bilinear_interpolate(image, x, y):
 
 #                                                        --- main ---
 
+image_height, image_width = image.shape[:2]
 
 # generation des points randoms 3d depuis les coordonnées (U,V) de points random du mapping
 random_points_2d = []
@@ -68,10 +69,11 @@ colors = []
 for i in tqdm(range(len(random_points_2d))):
     uv = random_points_2d[i]
     pt_3d = random_points_3d[i]
-    pixel = back_projeter(pt_3d, image, max_cost=None) #backprojection sur l'image
+    pixel = back_projeter(pt_3d, image_height, image_width, max_cost=None) #backprojection sur l'image
 
     if pixel is not None:
-        X, Y = pixel
+        point, _, _ = pixel
+        X, Y = point[0], point[1]
         color = bilinear_interpolate(image, X, Y) #obtention couleur pixel
         colors.append(color)
 

@@ -31,7 +31,7 @@ def back_projeter(X,
         return cost
     Y0 = np.array([image_width // 2, image_height // 2], dtype=np.float64)  # point de depart
     # minimisation
-    res = least_squares(f, Y0, loss="linear", verbose=2)
+    res = least_squares(f, Y0, loss="linear", verbose=0)
     #res = minimize(f, Y0, method="Nelder-Mead", bounds=[(0, image_width), (0, image_height)])
     #bounds=([0,0], [image_width, image_height])
     if max_cost:
