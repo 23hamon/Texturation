@@ -20,7 +20,7 @@ def back_projeter(X,
         - image_height, image_width : format de l'image
         - max_cost : cout maximal au dessus duquel rien ne sera renvoye (point hors de l'image)
     **Output :**
-        - Y_best : numpy array [x, y], coordonnees en pixel du point sur l'image
+        - res.x : numpy array [x, y], coordonnees en pixel du point sur l'image
         - r0 et rd, le rayon qui emane de Y
     """
     r0, rd = None, None
