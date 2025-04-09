@@ -4,7 +4,7 @@ import time
 
 
 # Charger le nuage de points
-pcd = o3d.io.read_point_cloud("nuage_oriente.ply")
+pcd = o3d.io.read_point_cloud("fichiers_ply/nuage_oriente.ply")
 k = 150  # Nombre de voisins les plus proches
 
 pcd.orient_normals_consistent_tangent_plane(k)
