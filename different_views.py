@@ -8,7 +8,25 @@ import trimesh
 with open("data/absolute_transforms.json", "r") as f:
     camera_data = json.load(f)["0"]
 
-mesh = trimesh.load_mesh('fichiers_ply/mesh_cailloux_min.ply')
+mesh = trimesh.load_mesh('fichiers_ply/mesh_cailloux_low.ply')
+#créer la fonction de cout : 
+#faire un produit scalaire entre les 2
+#trouver la distance à la caméra de l'image 
+#la fonction cout est une mutliplication de la distance entre les 2 par le produit scalaire des normales
+#on va minimiser la fonction de cout --> on veut des normales qui sont les plus opposées possibles. 
+
+
+#on prend une face i du mesh
+#on prend une vue j
+#on regarde si cette face est visible dans l'image --> on regarde la matrice (i,j) et on regarde si le mij=1 
+#si non, on passe à une autre vue 
+#si oui, on continue:
+#on calcule la normale de la face 
+#on calcule la normale de la vue 
+#on applique la fonction de cout 
+
+def cost_function():
+    return 1
 
 
 
