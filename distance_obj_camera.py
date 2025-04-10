@@ -13,7 +13,7 @@ mesh = trimesh.load_mesh('fichiers_intermediaires/mesh_visible_low.ply')
 
 # -- fct auxiliaires --
 
-def dist_cam_obj(X, view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r):
+def dist_obj_cam(X, view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r):
 
     image_path_l = f"downsampled/scene_l_00{str(view_number)}.jpeg"
     image_path_r = f"downsampled/scene_r_00{str(view_number)}.jpeg"
@@ -61,7 +61,8 @@ def dist_cam_obj(X, view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r):
 
 
 # --- main ---
-
+#pour l'instant, on ne tente que sur des distances pour des photos qui sont situées à l'origine. 
+#On ne prendra pas de vues différentes, afin de ne pas avoir de mauvais calculs dus à la rotation de la caméra qu'on a mal (??) calculée
 view_number = 26
 R_cam = np.eye(3)
 t_cam = np.zeros((3,))
@@ -71,7 +72,7 @@ t_cam_l_r = param_calib.TranslationDroiteGauche
 mesh = trimesh.load_mesh('fichiers_intermediaires/mesh_visible_low.ply')
 vertices = mesh.vertices
 
-print(dist_cam_obj(vertices[0], view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r))
+print(dist_obj_cam(vertices[0], view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r))
 
 
 
