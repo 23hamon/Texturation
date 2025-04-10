@@ -1,35 +1,38 @@
+
+import json
 import numpy as np
-import matplotlib.pyplot as plt
-from skimage.draw import polygon
+import cv2
+from tqdm import tqdm
+import trimesh
+from distance_obj_camera import dist_obj_cam
 
-# Création d'une image blanche RGB
-image = np.ones((256, 256, 3), dtype=np.float32)
 
-# Définition d'un triangle en coordonnées UV normalisées [0, 1]
-# Format : (x, y) = (u, v)
-uvs = [ np.array([
-    [0.2, 0.2],  # sommet A
-    [0.8, 0.2],  # sommet B
-    [0.5, 0.7]   # sommet C
-]),  np.array([
-    [0.1, 0.6],  # sommet A
-    [0.4, 0.1],  # sommet B
-    [0.03, 0.8]   # sommet C
-])]
+with open("data/absolute_transforms.json", "r") as f:
+    camera_data = json.load(f)["0"]
 
-for uvs in uvs : 
-    # Conversion des UV en coordonnées pixels : (x, y) -> (colonne, ligne)
-    c = uvs[:, 0] * image.shape[1]  # abscisses (colonnes)
-    r = uvs[:, 1] * image.shape[0]  # ordonnées (lignes)
+mesh = trimesh.load_mesh('fichiers_ply/mesh_cailloux_low.ply')
 
-    # Utilisation de skimage.draw.polygon pour obtenir les pixels à remplir
-    rr, cc = polygon(r, c, image.shape[:2])  # On fournit la taille en 2D (H, W)
 
-    # Remplissage en rouge
-    image[rr, cc] = [1, 0, 0]  # RGB = rouge
+def cost_function(normal_face, normal_view):
+        cost = np.dot(normal_face, normal_view)
+        if cost <= 0:
+            return cost
+        else : 
+            print("cost > 0")
 
-# Affichage
-plt.imshow(image)
-plt.axis('off')
-plt.title("Triangle colorié en rouge")
-plt.show()
+#on se place à l'origine
+for i, face in enumerate(mesh.faces[0:10]): 
+    #print(i, face)
+    face = mesh.faces[face] #on prend la face i
+    for j, view in enumerate(camera_data.keys()): #on prend la vue 26 par exemple, alors j = 0 et view = 26
+        #on prend l'indice de la vue j
+        #on regarde si cette face est visible dans l'image --> on regarde la matrice (i,j) et on regarde si le mij=1
+        #on calcule la normale de la face 
+        normal_face = mesh.face_normals[face]
+        #on calcule la normale de la vue 
+        R, T = camera_data[view][0], camera_data[view][1]
+        print(R, T)
+        R, _ = cv2.Rodrigues(R)
+        normal_view = R[:, 2]
+        cost = cost_function(normal_face, normal_view)
+        print(f"cost = {cost}")
