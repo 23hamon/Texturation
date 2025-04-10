@@ -43,20 +43,6 @@ def dist_obj_cam(X, view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r):
     p, _ = closest_point_to_two_lines(ro_l, rd_l, ro_r, rd_r)
     distance_l = np.linalg.norm(p - ro_l)
     distance_r = np.linalg.norm(p - ro_r)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.quiver(ro_l[0], ro_l[1], ro_l[2], rd_l[0], rd_l[1], rd_l[2], length=1, color='r', label="Rayon Caméra Gauche")
-    ax.quiver(ro_r[0], ro_r[1], ro_r[2], rd_r[0], rd_r[1], rd_r[2], length=1, color='b', label="Rayon Caméra Droite")
-    ax.scatter(p[0], p[1], p[2], color='g', s=100, label='Point d\'Intersection')
-    ax.plot_trisurf(mesh.vertices[:, 0], mesh.vertices[:, 1], mesh.vertices[:, 2], triangles=mesh.faces, color='gray', alpha=0.5)
-    ax.legend()
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    plt.show()
-
-
     return p, distance_l, distance_r
 
 
@@ -72,7 +58,7 @@ t_cam_l_r = param_calib.TranslationDroiteGauche
 mesh = trimesh.load_mesh('fichiers_intermediaires/mesh_visible_low.ply')
 vertices = mesh.vertices
 
-print(dist_obj_cam(vertices[0], view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r))
+#print(dist_obj_cam(vertices[0], view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r))
 
 
 
