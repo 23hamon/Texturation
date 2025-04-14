@@ -7,58 +7,43 @@ from utils import closest_point_to_two_lines
 import os
 import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
+from utils import r0_rd
 
-mesh = trimesh.load_mesh('fichiers_intermediaires/mesh_visible_low.ply')
+#récupérer la taille d'une image 
+image_height, image_width, _ = cv2.imread("downsampled/scene_l_0026.jpeg").shape
+print(image_height, image_width)
 
 
 # -- fct auxiliaires --
 
-def dist_obj_cam(X, view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r):
+def dist_obj_cam(X, R_cam, t_cam, R_cam_l_r, t_cam_l_r, image_height=2000, image_width=3000):
+    '''Le R-cam eet t_cam de chaque vue a été calculé en amout'''
 
-    image_path_l = f"downsampled/scene_l_00{str(view_number)}.jpeg"
-    image_path_r = f"downsampled/scene_r_00{str(view_number)}.jpeg"
-    image_l = cv2.imread(image_path_l)[..., ::-1]
-    image_r = cv2.imread(image_path_r)[..., ::-1]
+    ro_l, rd_l = r0_rd(X, R_cam, t_cam, cam="l")
+    ro_r, rd_r = r0_rd(X, R_cam_l_r, t_cam_l_r, cam="r")
 
-    if not os.path.exists(image_path_l):
-        print(f"Erreur: Le fichier {image_path_l} est manquant.")
-        return None
-    if not os.path.exists(image_path_r):
-        print(f"Erreur: Le fichier {image_path_r} est manquant.")
-        return None
-    
-    height_l, width_l, _ = image_l.shape
-    height_r, width_r, _ = image_r.shape
-
-    #on trouve la matrice de rotation de la caméra droite par rapport à la caméra gauche
-    R_cam_r = R_cam @ R_cam_l__r 
-    t_cam_r = R_cam @ t_cam_l_r + t_cam #a voir si ca marche !!!!
-
-
-    _, ro_l, rd_l = back_projeter( X, height_l, width_l, R_cam, t_cam)
-    _, ro_r, rd_r = back_projeter( X, height_r, width_r, R_cam_r, t_cam_r)
-
-
-    #on trouve les coordonnées du point
     p, _ = closest_point_to_two_lines(ro_l, rd_l, ro_r, rd_r)
-    distance_l = np.linalg.norm(p - ro_l)
-    distance_r = np.linalg.norm(p - ro_r)
+    distance_l = ((p - ro_l) ** 2).sum() ** 0.5
+    distance_r = ((p - ro_r) ** 2).sum() ** 0.5
+
     return p, distance_l, distance_r
 
 
 # --- main ---
+
 #pour l'instant, on ne tente que sur des distances pour des photos qui sont situées à l'origine. 
 #On ne prendra pas de vues différentes, afin de ne pas avoir de mauvais calculs dus à la rotation de la caméra qu'on a mal (??) calculée
-view_number = 26
-R_cam = np.eye(3)
-t_cam = np.zeros((3,))
-R_cam_l__r = param_calib.RotationDroiteGauche
-t_cam_l_r = param_calib.TranslationDroiteGauche
+# view_number = 26
 
-mesh = trimesh.load_mesh('fichiers_intermediaires/mesh_visible_low.ply')
-vertices = mesh.vertices
+# R_cam = np.eye(3)
+# t_cam = np.zeros((3,))
 
-#print(dist_obj_cam(vertices[0], view_number, R_cam, t_cam, R_cam_l__r, t_cam_l_r))
+# R_cam_l_r = param_calib.RotationDroiteGauche
+# t_cam_l_r = param_calib.TranslationDroiteGauche
+
+# mesh_test = trimesh.load_mesh('fichiers_intermediaires/mesh_visible_low.ply')
+# vertices = mesh_test.vertices
+# print(dist_obj_cam(vertices[0], R_cam, t_cam, R_cam_l_r, t_cam_l_r))
 
 
 

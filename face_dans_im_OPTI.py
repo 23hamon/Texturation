@@ -115,7 +115,7 @@ def generate_view_matrix(mesh, transforms, h, w, type_camera) :
 
 if __name__ == "__main__" :
 
-    image_id = 10
+    image_id = 16
     type_camera = "r"
     image_path = f"downsampled/scene_{type_camera}_00{image_id}.jpeg"
     image = cv2.imread(image_path)
@@ -128,7 +128,7 @@ if __name__ == "__main__" :
     visible_mesh = reconstruct_visible_mesh(mesh, are_triangles_visible)
     # Affichage
     o3d.visualization.draw_geometries([visible_mesh])
-
+"""
     transforms = []
     for j in range(53) :
         r, t = get_image_data(j+1)
@@ -136,7 +136,7 @@ if __name__ == "__main__" :
         transforms.append((rot, t)) 
     Mij = generate_view_matrix(mesh, transforms, h, w, "l")
     np.save("fichiers_intermediaires/Mij.npy", Mij)
-
+"""
 
 
 # ancien code

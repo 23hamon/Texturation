@@ -27,7 +27,8 @@ def r0_rd(Y, R=np.eye(3), t=np.zeros((3,)), cam="l") :
         rd = R.T @ R_DG.T @ rd_cam
     else :
         raise ValueError(f"Incorrect value : {cam}. 'cam' must be 'l' or 'r'")
-    return r0, rd/np.linalg.norm(rd)
+    rd_norm = ((rd) ** 2).sum() ** 0.5
+    return r0, rd/rd_norm
 
 
 def distance_X_to_D_r0_rd(X, r0, rd, decalage_erreur=0):
