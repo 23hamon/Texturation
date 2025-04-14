@@ -1,4 +1,4 @@
-from utils import r0_rd
+from utils import r0_rd, get_image_data
 import cv2
 import numpy as np
 import open3d as o3d
@@ -8,12 +8,8 @@ import data.param_calib as param
 image_id = 10
 camera_rl = "r"
 
-# position de l'image
-with open("data/absolute_transforms.json") as f :
-    data = json.load(f)
-    t_rot = np.array(data["0"][str(image_id)]).flatten()
-    rot,_ = cv2.Rodrigues(np.array(t_rot[:3], dtype=np.float64))
-    t = np.array(t_rot[3:], dtype=np.float64)
+r, t = get_image_data(10)
+rot,_ = cv2.Rodrigues(r)
 print(rot, t)
     
 

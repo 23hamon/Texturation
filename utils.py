@@ -16,11 +16,13 @@ def r0_rd(Y, R=np.eye(3), t=np.zeros((3,)), cam="l") :
         # passage du repere gauche au repere monde
         r0 = R.T @ r0_cam - R.T @ t
         rd = R.T @ rd_cam
+        # r0 = R @ r0_cam + t
+        # rd = R @ rd_cam
     elif cam == "r" :
         r0_cam, rd_cam = trace_refract_ray(Y, param_calib.air_K_r, param_calib.D_r, param_calib.n_r, param_calib.THICKNESS, param_calib.ETA_GLASS, param_calib.ETA_WATER)
         # passage du repere droit au repere monde
-        R_DG = param_calib.RotationDroiteGauche
-        t_DG = param_calib.TranslationDroiteGauche
+        R_DG = param_calib.R_DG
+        t_DG = param_calib.t_DG
         r0 = R.T @ (R_DG.T @ r0_cam - R_DG.T @ t_DG) - R.T @ t
         rd = R.T @ R_DG.T @ rd_cam
     else :
@@ -28,7 +30,7 @@ def r0_rd(Y, R=np.eye(3), t=np.zeros((3,)), cam="l") :
     return r0, rd/np.linalg.norm(rd)
 
 
-def distance_X_to_D_r0_rd(X, r0, rd):
+def distance_X_to_D_r0_rd(X, r0, rd, decalage_erreur=0):
     """
     Calcule d(X,D) ou X(x,y,z) est un point du mesh 3D, et D = {r0 + t * rd | d in IR} rayon lumineux parametre par r0 et rd
     X, r0 et rd sont des tableaux np de 3 floats
@@ -38,9 +40,9 @@ def distance_X_to_D_r0_rd(X, r0, rd):
     rdx, rdy, rdz = rd[0], rd[1], rd[2]
     
     return np.array([
-        rdz*(y-r0y) - rdy*(z-r0z),
-        rdx*(z-r0z) - rdz*(x-r0x),
-        rdy*(x-r0x) - rdx*(y-r0y)]).flatten()
+        rdz*(y-r0y) - rdy*(z-r0z) - decalage_erreur,
+        rdx*(z-r0z) - rdz*(x-r0x) - decalage_erreur,
+        rdy*(x-r0x) - rdx*(y-r0y) - decalage_erreur ]).flatten()
 
 def get_image_data(image_id=26):
     """
