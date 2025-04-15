@@ -6,7 +6,8 @@ import cv2
 from scipy.optimize import least_squares
 import time
 import json
-import data.param_calib as param
+#import data.param_calib as param
+import data.calib_luca as param_calib
 import matplotlib.pyplot as plt
 
 def back_projeter(X,
@@ -42,19 +43,19 @@ def back_projeter(X,
         else : 
             return None
     else : 
-        print(f"erreur finale pour l'image {cam} : {res.fun}")
+        #print(f"erreur finale pour l'image {cam} : {res.fun}")
         return res.x, r0, rd
     
 # --------------------------
 
 if __name__ == "__main__" :
 
-    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux.ply")
+    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca_high.ply")
     mesh.paint_uniform_color([0.5, 0.5, 0.5])
     mesh.compute_vertex_normals()
 
     flip = False
-    image_id = 26
+    image_id = 10
     r,t = get_image_data(image_id)
     rot, _ =cv2.Rodrigues(r)
     print(f"r = {r}, t = {t}, \n rot = {rot}")
@@ -100,11 +101,11 @@ if __name__ == "__main__" :
     for i in range(N) :
         (Y_best_l, r0_l, rd_l, Y_best_r, r0_r, rd_r) = Y_bests[i]
         ligne_l = o3d.geometry.LineSet()
-        ligne_l.points = o3d.utility.Vector3dVector([r0_l-1200*rd_l, r0_l -500 * rd_l])
+        ligne_l.points = o3d.utility.Vector3dVector([r0_l+1200*rd_l, r0_l +500 * rd_l])
         ligne_l.lines = o3d.utility.Vector2iVector([[0, 1]])
         ligne_l.colors = o3d.utility.Vector3dVector([colors[i]])
         ligne_r = o3d.geometry.LineSet()
-        ligne_r.points = o3d.utility.Vector3dVector([r0_r-1200*rd_r, r0_r -500 * rd_r])
+        ligne_r.points = o3d.utility.Vector3dVector([r0_r+1200*rd_r, r0_r +500 * rd_r])
         ligne_r.lines = o3d.utility.Vector2iVector([[0, 1]])
         ligne_r.colors = o3d.utility.Vector3dVector([colors[i]])
         lignes_l.append(ligne_l)
@@ -118,12 +119,12 @@ if __name__ == "__main__" :
             r0_coin_l, rd_coin_l = r0_rd(Y, rot, t, "l")
             r0_coin_r, rd_coin_r = r0_rd(Y, rot, t, "r")
             ligne_coin_l = o3d.geometry.LineSet()
-            ligne_coin_l.points = o3d.utility.Vector3dVector([r0_coin_l-1200*rd_coin_l, r0_coin_l -500 * rd_coin_l])
+            ligne_coin_l.points = o3d.utility.Vector3dVector([r0_coin_l+1200*rd_coin_l, r0_coin_l +500 * rd_coin_l])
             ligne_coin_l.lines = o3d.utility.Vector2iVector([[0, 1]])
             ligne_coin_l.colors = o3d.utility.Vector3dVector([[0, 0, 1]])
             lignes_coins_l.append(ligne_coin_l)
             ligne_coin_r = o3d.geometry.LineSet()
-            ligne_coin_r.points = o3d.utility.Vector3dVector([r0_coin_r-1200*rd_coin_r, r0_coin_r -500 * rd_coin_r])
+            ligne_coin_r.points = o3d.utility.Vector3dVector([r0_coin_r+1200*rd_coin_r, r0_coin_r +500 * rd_coin_r])
             ligne_coin_r.lines = o3d.utility.Vector2iVector([[0, 1]])
             ligne_coin_r.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
             lignes_coins_r.append(ligne_coin_r)

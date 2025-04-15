@@ -1,19 +1,20 @@
 import open3d as o3d
 import numpy as np
 import cv2
-from data.param_calib import n_l, n_r
+#from data.param_calib import n_l, n_r
+from data.calib_luca import n_l, n_r
 from backprojection import back_projeter
-from utils import get_image_data
+from utils import get_image_data, r0_rd
 
-def is_face_in_the_camera_direction(normale_face, normale_image, cos_theta_min:float=0) :
+def is_face_in_the_camera_direction(normale_face, normale_image, cos_theta_max:float=0) :
     """Renvoie True si la face est dans le meme sens que la camera depuis la vue donnee, False sinon""" 
-    return np.dot(normale_face, normale_image) > cos_theta_min
+    return np.dot(normale_face, normale_image) < cos_theta_max
 
 def get_visible_faces(mesh,                         # mesh 3D
                       h, w,                         # taille de l'image
                       rot, t,                       # position du rig par rapport au repere monde
                       type_camera="l",              # type de camera ("l" ou "r")
-                      cos_theta_min_pre_filtrage=0  # cos minimal de l'angle relatif entre les normales de la camera et de la face
+                      cos_theta_max_pre_filtrage=0  # cos minimal de l'angle relatif entre les normales de la camera et de la face
                       ) :
     """
     Utilise le raycasting pour determiner les faces visibles depuis une vue
@@ -39,11 +40,11 @@ def get_visible_faces(mesh,                         # mesh 3D
     for i in range(N_tri) :
         # filtration par extraction des faces dans la bonne direction
         normal = triangle_normals[i, :]
-        if is_face_in_the_camera_direction(normal, n_monde, cos_theta_min_pre_filtrage) : 
+        if is_face_in_the_camera_direction(normal, n_monde, cos_theta_max_pre_filtrage) : 
             tri = triangles[i]
             X_center = vertices[tri].mean(axis=0) # centre de la face
             _, r0, rd = back_projeter(X_center, h, w, rot, t, type_camera) # retro-projection
-            rays_to_faces[i, :] = np.concatenate([np.array(r0), -np.array(rd)])  
+            rays_to_faces[i, :] = np.concatenate([np.array(r0), np.array(rd)])  
 
     # -- Etape 3 -- Ray-tracing de chaque rayon visant une face
     # creation de la scene de raytracing
@@ -115,28 +116,49 @@ def generate_view_matrix(mesh, transforms, h, w, type_camera) :
 
 if __name__ == "__main__" :
 
-    image_id = 16
-    type_camera = "r"
-    image_path = f"downsampled/scene_{type_camera}_00{image_id}.jpeg"
+    # image_id = 29
+    # type_camera = "l"
+    # image_path = f"downsampled/scene_{type_camera}_00{image_id}.jpeg"
+    # image = cv2.imread(image_path)
+    # h, w = image.shape[:2]
+    # r, t = get_image_data(image_id)
+    # rot, _ = cv2.Rodrigues(r)
+    # mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca.ply")
+    # # Calcul des faces visibles
+    # are_triangles_visible = get_visible_faces(mesh, h, w, rot, t, type_camera)
+    # visible_mesh = reconstruct_visible_mesh(mesh, are_triangles_visible)
+    # # Affichage 
+    # lignes_coins_l = []
+    # lignes_coins_r = []
+    # for x in [0, 2999] :
+    #     for y in [0, 1999] :
+    #         Y= np.array([x, y], dtype=np.float64)
+    #         r0_coin_l, rd_coin_l = r0_rd(Y, rot, t, "l")
+    #         r0_coin_r, rd_coin_r = r0_rd(Y, rot, t, "r")
+    #         ligne_coin_l = o3d.geometry.LineSet()
+    #         ligne_coin_l.points = o3d.utility.Vector3dVector([r0_coin_l+1200*rd_coin_l, r0_coin_l +500 * rd_coin_l])
+    #         ligne_coin_l.lines = o3d.utility.Vector2iVector([[0, 1]])
+    #         ligne_coin_l.colors = o3d.utility.Vector3dVector([[0, 0, 1]])
+    #         lignes_coins_l.append(ligne_coin_l)
+    #         ligne_coin_r = o3d.geometry.LineSet()
+    #         ligne_coin_r.points = o3d.utility.Vector3dVector([r0_coin_r+1200*rd_coin_r, r0_coin_r +500 * rd_coin_r])
+    #         ligne_coin_r.lines = o3d.utility.Vector2iVector([[0, 1]])
+    #         ligne_coin_r.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
+    #         lignes_coins_r.append(ligne_coin_r)
+    # o3d.visualization.draw_geometries([visible_mesh]+lignes_coins_l+lignes_coins_r)
+
+    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca.ply")
+    image_path = f"downsampled/scene_{"l"}_00{"32"}.jpeg"
     image = cv2.imread(image_path)
     h, w = image.shape[:2]
-    r, t = get_image_data(image_id)
-    rot, _ = cv2.Rodrigues(r)
-    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_low.ply")
-    # Calcul des faces visibles
-    are_triangles_visible = get_visible_faces(mesh, h, w, rot, t, type_camera)
-    visible_mesh = reconstruct_visible_mesh(mesh, are_triangles_visible)
-    # Affichage
-    o3d.visualization.draw_geometries([visible_mesh])
-"""
     transforms = []
-    for j in range(53) :
+    for j in range(52) :
         r, t = get_image_data(j+1)
         rot, _ = cv2.Rodrigues(r)
         transforms.append((rot, t)) 
     Mij = generate_view_matrix(mesh, transforms, h, w, "l")
     np.save("fichiers_intermediaires/Mij.npy", Mij)
-"""
+
 
 
 # ancien code

@@ -1,5 +1,5 @@
 import numpy as np
-from utils import r0_rd, distance_X_to_D_r0_rd, get_image_data
+from utils import r0_rd, get_image_data
 from scipy.optimize import least_squares
 import cv2
 import open3d as o3d
@@ -87,7 +87,7 @@ def create_cross(center, size=10, thickness=1, color=[0, 1, 0]):
 
 if __name__ == "__main__" :
     # Ouverture du mesh, des images, des points
-    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux.ply")
+    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca_high.ply")
     mesh.paint_uniform_color([0.5, 0.5, 0.5])
     mesh.compute_vertex_normals()
 
@@ -122,11 +122,11 @@ if __name__ == "__main__" :
 
     # tracer les rayons
     ligne_l = o3d.geometry.LineSet()
-    ligne_l.points = o3d.utility.Vector3dVector([r0_l-1200*rd_l, r0_l -500 * rd_l])
+    ligne_l.points = o3d.utility.Vector3dVector([r0_l+1200*rd_l, r0_l +500 * rd_l])
     ligne_l.lines = o3d.utility.Vector2iVector([[0, 1]])
     ligne_l.colors = o3d.utility.Vector3dVector([[0, 0, 1]])
     ligne_r = o3d.geometry.LineSet()
-    ligne_r.points = o3d.utility.Vector3dVector([r0_r-1200*rd_r, r0_r -500 * rd_r])
+    ligne_r.points = o3d.utility.Vector3dVector([r0_r+1200*rd_r, r0_r +500 * rd_r])
     ligne_r.lines = o3d.utility.Vector2iVector([[0, 1]])
     ligne_r.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
 
@@ -139,12 +139,12 @@ if __name__ == "__main__" :
             r0_coin_l, rd_coin_l = r0_rd(Y, rot, t, "l")
             r0_coin_r, rd_coin_r = r0_rd(Y, rot, t, "r")
             ligne_coin_l = o3d.geometry.LineSet()
-            ligne_coin_l.points = o3d.utility.Vector3dVector([r0_coin_l-1200*rd_coin_l, r0_coin_l -500 * rd_coin_l])
+            ligne_coin_l.points = o3d.utility.Vector3dVector([r0_coin_l+1200*rd_coin_l, r0_coin_l +500 * rd_coin_l])
             ligne_coin_l.lines = o3d.utility.Vector2iVector([[0, 1]])
             ligne_coin_l.colors = o3d.utility.Vector3dVector([[0, 0, 1]])
             lignes_coins_l.append(ligne_coin_l)
             ligne_coin_r = o3d.geometry.LineSet()
-            ligne_coin_r.points = o3d.utility.Vector3dVector([r0_coin_r-1200*rd_coin_r, r0_coin_r -500 * rd_coin_r])
+            ligne_coin_r.points = o3d.utility.Vector3dVector([r0_coin_r+1200*rd_coin_r, r0_coin_r +500 * rd_coin_r])
             ligne_coin_r.lines = o3d.utility.Vector2iVector([[0, 1]])
             ligne_coin_r.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
             lignes_coins_r.append(ligne_coin_r)

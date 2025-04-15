@@ -1,6 +1,7 @@
 import numpy as np
 from calibration.utils import trace_refract_ray
-import data.param_calib as param_calib
+#import data.param_calib as param_calib
+import data.calib_luca as param_calib
 import json
 import cv2
 
@@ -50,7 +51,7 @@ def get_image_data(image_id=26):
     Renvoie (rot, t) ou rot est la matrice de rotation de la camera, et t son vecteur de translation
     """
     # position de l'image
-    with open("data/absolute_transforms_full.json") as f :
+    with open("data/absolute_transforms_luca.json") as f :
         data = json.load(f)
         image_id=str(image_id)
         r = np.array(data["0"][image_id][0], dtype=np.float64)
