@@ -7,24 +7,23 @@ from distance_obj_camera import dist_obj_cam
 from data import param_calib
 from utils import get_image_data
 
-with open("data/absolute_transforms_full.json", "r") as f:
+with open("data/absolute_transforms_luca.json", "r") as f:
     camera_data = json.load(f)["0"]
 
-mesh = trimesh.load_mesh('fichiers_ply/mesh_cailloux_low.ply')
-Mij = np.load("fichiers_intermediaires/Mij.npy")
+mesh = trimesh.load_mesh('fichiers_ply/mesh_cailloux_luca_LOW.ply')
+Mij = np.load("fichiers_intermediaires/MijLOW.npy")
 R_cam_l_r = param_calib.R_DG
 t_cam_l_r = param_calib.t_DG
 n_l = param_calib.n_l
 
 #initialisation
-start, stop = 5001, 5002
+start, stop = 6, 7
 mesh.visual.vertex_colors = [200, 200, 200, 255]
 mesh.visual.face_colors[start:stop] = [255, 0, 0, 255]
 
 transforms = []
 for key in camera_data:
-    r, t = get_image_data(key)
-    R, _ = cv2.Rodrigues(r)
+    R, t = get_image_data(key)
     transforms.append((R, t))
 
 # function 
@@ -51,7 +50,7 @@ lines = trimesh.load_path(mesh.vertices[mesh.edges_unique])
 lines.colors = [[0, 0, 0, 255]] * len(lines.entities)
 scene.add_geometry(lines)
 
-i = 500 #par exemple
+i = 6 #par exemple
 center = mesh.triangles_center[i]
 normal = mesh.face_normals[i]
 line = trimesh.load_path([center, center + 50 * normal])
@@ -60,8 +59,7 @@ scene.add_geometry(line)
 
 for j, view in enumerate(camera_data):
     if Mij[i, int(view) - 1] == 1:
-        r, t = get_image_data(view)
-        R, _ = cv2.Rodrigues(r)
+        R, t = get_image_data(view)
         normal_view = - R.T @ n_l
         line = trimesh.load_path([center, center + 50 * normal_view])
         line.colors = [[0, 255, 0, 255]]
@@ -72,4 +70,4 @@ scene.show()
 print(Mij[i, :])
 print(cost_matrix[i, :])
 
-Wij = np.save("fichiers_intermediaires/Wij.npy", cost_matrix)
+Wij = np.save("fichiers_intermediaires/WijLOW.npy", cost_matrix)
