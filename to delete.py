@@ -1,121 +1,179 @@
-import numpy as np
 import trimesh
+import numpy as np
+from collections import defaultdict
+import xatlas
 from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import lsqr
 import matplotlib.pyplot as plt
+from utils import barycentric_coordinates, bilinear_interpolate
+from skimage.draw import polygon
+from tqdm import tqdm
+from backprojection import back_projeter
 
-# 1. Création d’un mesh simple
+np.set_printoptions(threshold=np.inf)
+np.random.seed(42)
+
+# EXEMPLE carré divisé en deux triangles
 vertices = np.array([
     [0, 0, 0],  # 0
     [1, 0, 0],  # 1
-    [0, 1, 0],  # 2
-    [1, 1, 0],  # 3
+    [1, 1, 0],  # 2
+    [0, 1, 0]   # 3
 ])
 faces = np.array([
-    [0, 1, 2],  # Face 0
-    [1, 3, 2],  # Face 1
+    [0, 1, 2],  # triangle 1
+    [0, 2, 3]   # triangle 2
 ])
-mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
 
-# 2. Coordonnées UV associées aux sommets (mappées sur image 64x64)
-uvs = {
-    0: (0.0, 0.0),
-    1: (1.0, 0.0),
-    2: (0.0, 1.0),
-    3: (1.0, 1.0),
-}
+mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
+shared = np.intersect1d(mesh.faces[0], mesh.faces[1])
 
-# 3. Création de deux textures en dégradé de rouge
-texture1 = np.zeros((64, 64, 3), dtype=np.uint8)
-texture2 = np.zeros((64, 64, 3), dtype=np.uint8)
+# if len(shared) == 2:
+#     segment = trimesh.load_path(mesh.vertices[shared])
+#     scene = trimesh.Scene([mesh, segment])
+#     scene.show()
 
-for x in range(64):
-    texture1[:, x, 0] = int((x / 63) * 255)  # rouge horizontal
 
-for y in range(64):
-    texture2[y, :, 0] = int((y / 63) * 255)  # rouge vertical
+#creation image de texture (pas utilisé encore)
 
-# 4. Association des textures aux faces
-face_to_view = {0: 0, 1: 1}
-view_to_texture = {0: texture1, 1: texture2}
+red_shades = np.array([[255, 0, 0], [100, 0, 0]])
 
-# 5. Détermination de Cj : sommets colorés par chaque vue
-C = {0: set(faces[0]), 1: set(faces[1])}
+Image = np.zeros((512, 512, 3), dtype=np.uint8)
 
-# 6. Fonction f_red[j][i] = intensité rouge pour sommet i, vue j
-f_red = {0: {}, 1: {}}
-for j, vertices_set in C.items():
-    tex = view_to_texture[j]
-    for i in vertices_set:
-        u, v = uvs[i]
-        x = int(u * (tex.shape[1] - 1))
-        y = int(v * (tex.shape[0] - 1))
-        red = tex[y, x, 0]
-        f_red[j][i] = red
+for y in range(512):
+    for x in range(512):
+        if y + x < 511:  
+            Image[y, x] = red_shades[0]
+        else:
+            Image[y, x] = red_shades[1]
 
-# 7. Set M des paires (i, j)
-M = [(i, j) for j in C for i in C[j]]
-index_map = { (i, j): idx for idx, (i, j) in enumerate(M) }
-n = len(index_map)
+plt.imshow(Image)
+plt.axis('off')
+plt.show()
 
+# best views
+
+n_views = 3
+n_faces = len(mesh.faces)
+Wij = np.random.rand(n_faces, n_views)
+best_views = np.argmin(Wij, axis=1)
+print(best_views)
+
+# sommets adjacents
+
+def adjacent_vertices(mesh):
+    L = defaultdict(list)
+    for face in mesh.faces:
+        for i in range(3):
+            for j in range(i + 1, 3):
+                if face[j] not in L[face[i]]:
+                    L[face[i]].append(face[j])
+                if face[i] not in L[face[j]]:
+                    L[face[j]].append(face[i])
+    return L
+
+L = adjacent_vertices(mesh)
+
+# sommets colorés par vue 
+
+C = defaultdict(set)
+for face, view in enumerate(best_views):
+    for vertex in mesh.faces[face]:
+        C[view].add(vertex)
+
+#sommets avec vues associées
+M = [(i, j) for j, vertices in C.items() for i in vertices]
 print(M)
-# 8. Arêtes (adjacence)
+
+
 edges = set()
-for face in faces:
-    for i in range(3):
-        for j in range(i + 1, 3):
-            u, v = face[i], face[j]
-            if u != v:
-                edges.add((min(u, v), max(u, v)))
+for i, neighbors in L.items():
+    for j in neighbors:
+        if i < j:
+            edges.add((i, j))
 
-# Construction de L : liste des voisins
-L = {i: set() for i in range(len(vertices))}
-for face in faces:
-    for i in range(3):
-        for j in range(i + 1, 3):
-            u, v = face[i], face[j]
-            if u != v:
-                L[u].add(v)
-                L[v].add(u)
+# -- fonction d'intensité 
+f = np.array([
+    [255, 0, 100],  # sommet 0
+    [255, 0, 100],  # sommet 1
+    [0, 0, 100],    
+    [255, 0, 100]])   
 
-# 9. Construction de A et b
-lambda_reg = 10  # poids de la discontinuité
-A = lil_matrix((1000, n))  # 1000 lignes max (temporairement)
-b = np.zeros(1000)
+# Systeme equations lineaitre
+lambda_seam = 100
+index_map = { (i, j): idx for idx, (i, j) in enumerate(M) }
+n = len(M)
+
+A = lil_matrix((100 * n, n), dtype=np.float32)
+b = np.zeros(100 * n, dtype=np.float32)
 row = 0
 
-#deux voisins ont la même vue
+# Cas voisins
 for (i1, j) in M:
     for i2 in L[i1]:
         if (i2, j) in index_map:
-            idx1 = index_map[(i1, j)]
-            idx2 = index_map[(i2, j)]
-            A[row, idx1] = 1
-            A[row, idx2] = -1
+            A[row, index_map[(i1, j)]] = -1
+            A[row, index_map[(i2, j)]] = 1
             b[row] = 0
             row += 1
+            print(i1, i2, j)
 
-#un sommet a deux vues différentes
-for (i,j1) in M:
-    for j2 in C:
-        if j1 != j2 and (i, j2) in index_map:
+# Cas vues différentes
+for (i, j1) in M:
+    for (i2, j2) in M:
+        if i == i2 and j1 != j2:
             idx1 = index_map[(i, j1)]
             idx2 = index_map[(i, j2)]
-            A[row, idx1] = lambda_reg
-            A[row, idx2] = -lambda_reg
-            b[row] = lambda_reg * (f_red[j1][i] - f_red[j2][i])
+            A[row, idx1] = -lambda_seam
+            A[row, idx2] = lambda_seam
+            b[row] = (f[i, j1] - f[i, j2]) * lambda_seam
             row += 1
-    
 
-# Réduction
 A = A[:row]
 b = b[:row]
 
-# 10. Résolution
-g_vector = lsqr(A.tocsr(), b)[0]
+print("A:")
+print(A.todense())
+print("b:")
+print(b)
 
-# 11. Affichage des résultats
-print("\n--- Résultats ---")
-for (i, j), idx in index_map.items():
-    correction = g_vector[idx]
-    print(f"g[{i},{j}] = {correction:.2f}, f_red = {f_red[j][i]}")
+g_vector = lsqr(A, b)[0]
+
+print("g_vector:")
+print(g_vector)
+print(f)
+#mise à jour de la fonction d'intensité
+for (i, j) in M:
+    f[i, j] = f[i,j] + g_vector[index_map[(i, j)]]
+
+print(f)
+
+
+Image_final = np.zeros((512, 512, 3), dtype=np.uint8)
+
+for face_idx, face in enumerate(mesh.faces):
+    view = best_views[face_idx]
+    verts = face
+
+    uv_coords = (uvs[verts] * 511).astype(np.int32)
+    uv_coords = (uvs[verts] * 511).astype(np.int32)
+    u = 511 - uv_coords[:, 0]
+    v = uv_coords[:, 1]  # inversion verticale
+
+    rr, cc = polygon(v, u, Image_final.shape[:2])
+
+    try:
+        red_values = [f[vi, view] for vi in verts]
+    except IndexError:
+        continue
+
+    mean_red = np.mean(red_values).astype(np.uint8)
+
+    Image_final[rr, cc, 0] = mean_red  # canal rouge
+    # vert et bleu laissés à 0
+
+plt.imshow(Image_final)
+plt.axis('off')
+plt.title("Image simplifiée depuis f")
+plt.show()
