@@ -11,8 +11,6 @@ import data.calib_luca as param_calib
 import matplotlib.pyplot as plt
 
 def back_projeter(X,
-                  image_height,
-                  image_width,
                   R_cam=np.eye(3),      # rotation de la camera
                   t_cam=np.zeros((3,)), # translation de la camera
                   cam="l",              # type de camera (gauche ou droite)
@@ -36,7 +34,7 @@ def back_projeter(X,
     #Y0 = np.array([image_width // 2, image_height // 2], dtype=np.float64)  # point de depart
     Y0 = np.array([0., 0.], dtype=np.float64)
     # minimisation
-    res = least_squares(f, Y0, loss="linear", verbose=0)
+    res = least_squares(f, Y0, loss="linear", verbose=0, ftol=1e-4, xtol=1e-2)
     if max_cost:
         if res.fun < max_cost :
             return res.x, r0, rd
@@ -49,16 +47,15 @@ def back_projeter(X,
 # --------------------------
 
 if __name__ == "__main__" :
-
-    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca_high.ply")
+    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca_LOW.ply")
+    # mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca_high.ply")
     mesh.paint_uniform_color([0.5, 0.5, 0.5])
     mesh.compute_vertex_normals()
 
     flip = False
     image_id = 10
-    r,t = get_image_data(image_id)
-    rot, _ =cv2.Rodrigues(r)
-    print(f"r = {r}, t = {t}, \n rot = {rot}")
+    rot,t = get_image_data(image_id)
+    print(f"t = {t}, \n rot = {rot}")
 
     rot, t = rot, t
 
@@ -70,7 +67,7 @@ if __name__ == "__main__" :
 
     points = np.asarray(mesh.vertices)
 
-    N = 15
+    N = 1
     indices = [np.random.randint(len(points)) for i in range(N)]
     colors = [[np.random.uniform(0,1), np.random.uniform(0,1), np.random.uniform(0,1)] for i in range(N)]
     points_X = [points[idx] for idx in indices]
@@ -89,11 +86,13 @@ if __name__ == "__main__" :
     Y_bests = []
     for i in range(N) :
         X_test = points_X[i]
-        Y_best_l, r0_l, rd_l = back_projeter(X_test, h, w, rot, t, "l")
+        Y_best_l, r0_l, rd_l = back_projeter(X_test, rot, t, "l")
         Y_best_l = tuple(map(int, Y_best_l))  
-        Y_best_r, r0_r, rd_r = back_projeter(X_test, h, w, rot, t, "r")
+        Y_best_r, r0_r, rd_r = back_projeter(X_test, rot, t, "r")
         Y_best_r = tuple(map(int, Y_best_r))  
         Y_bests.append((Y_best_l, r0_l, rd_l, Y_best_r, r0_r, rd_r))
+        print(Y_best_r, Y_best_l)
+
 
     lignes_l = []
     lignes_r = []
