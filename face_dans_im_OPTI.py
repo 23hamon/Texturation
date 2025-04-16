@@ -43,7 +43,7 @@ def get_visible_faces(mesh,                         # mesh 3D
         if is_face_in_the_camera_direction(normal, n_monde, cos_theta_max_pre_filtrage) : 
             tri = triangles[i]
             X_center = vertices[tri].mean(axis=0) # centre de la face
-            _, r0, rd = back_projeter(X_center, h, w, rot, t, type_camera) # retro-projection
+            _, r0, rd = back_projeter(X_center,rot, t, type_camera) # retro-projection
             rays_to_faces[i, :] = np.concatenate([np.array(r0), np.array(rd)])  
 
     # -- Etape 3 -- Ray-tracing de chaque rayon visant une face
@@ -147,17 +147,16 @@ if __name__ == "__main__" :
     #         lignes_coins_r.append(ligne_coin_r)
     # o3d.visualization.draw_geometries([visible_mesh]+lignes_coins_l+lignes_coins_r)
 
-    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca.ply")
+    mesh = o3d.io.read_triangle_mesh("fichiers_ply/mesh_cailloux_luca_LOW.ply")
     image_path = f"downsampled/scene_{"l"}_00{"32"}.jpeg"
     image = cv2.imread(image_path)
     h, w = image.shape[:2]
     transforms = []
     for j in range(52) :
-        r, t = get_image_data(j+1)
-        rot, _ = cv2.Rodrigues(r)
+        rot, t = get_image_data(j+1)
         transforms.append((rot, t)) 
     Mij = generate_view_matrix(mesh, transforms, h, w, "l")
-    np.save("fichiers_intermediaires/Mij.npy", Mij)
+    np.save("fichiers_intermediaires/MijLOW.npy", Mij)
 
 
 

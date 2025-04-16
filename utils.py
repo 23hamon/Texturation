@@ -32,7 +32,7 @@ def r0_rd(Y, R=np.eye(3), t=np.zeros((3,)), cam="l") :
     return r0, rd/rd_norm
 
 
-def distance_X_to_D_r0_rd(X, r0, rd, decalage_erreur=0):
+def distance_X_to_D_r0_rd(X, r0, rd, decalage_erreur=1e-4):
     """
     Calcule d(X,D) ou X(x,y,z) est un point du mesh 3D, et D = {r0 + t * rd | d in IR} rayon lumineux parametre par r0 et rd
     X, r0 et rd sont des tableaux np de 3 floats
@@ -56,7 +56,8 @@ def get_image_data(image_id=26):
         image_id=str(image_id)
         r = np.array(data["0"][image_id][0], dtype=np.float64)
         t = np.array(data["0"][image_id][1], dtype=np.float64)
-    return (r, t)
+        rot, _ = cv2.Rodrigues(r)
+    return (rot, t)
 
 if __name__ == "__main__" :
     print(param_calib.air_K_l, param_calib.D_l, param_calib.n_l, param_calib.THICKNESS, param_calib.ETA_GLASS, param_calib.ETA_WATER)
