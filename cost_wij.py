@@ -10,8 +10,13 @@ from utils import get_image_data
 with open("data/absolute_transforms_luca.json", "r") as f:
     camera_data = json.load(f)["0"]
 
+<<<<<<< Updated upstream
 mesh = trimesh.load_mesh('fichiers_ply/mesh_cailloux_luca_LOW.ply')
 Mij = np.load("fichiers_intermediaires/MijLOW.npy")
+=======
+mesh = trimesh.load_mesh('fichiers_ply/mesh_cailloux_luca_low.ply')
+Mij = np.load("fichiers_intermediaires/Mij.npy")
+>>>>>>> Stashed changes
 R_cam_l_r = param_calib.R_DG
 t_cam_l_r = param_calib.t_DG
 n_l = param_calib.n_l
