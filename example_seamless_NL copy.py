@@ -103,7 +103,7 @@ n_views = Wij.shape[1]
 
 # Fonctions d'intensité pour chaque vue
 def intensity(texture_map, n_vertices, n_views, color=0):
-    f = np.full((n_vertices, n_views), 0)  # remplie par défaut à 0 (noir)
+    f = np.full((n_vertices, n_views), np.nan)  # remplie par défaut à NaN
     for j, vertices in C.items():
         for i in vertices:
             u, v = uvs[i]
@@ -166,16 +166,18 @@ x0 = np.zeros(n)
 res = least_squares(g, x0, jac='2-point')
 
 optimal_x = res.x
-print(optimal_x[index_map[0,0]]) # valeur de g pour le sommet 0 et la vue 0
+print(M)
+print(optimal_x) # valeur de g pour le sommet 0 et la vue 0
 print(f_all_views)
 
 # Mettre à jour f_all_views avec la nouvelle fonction d'intensité
 for j in f_all_views:
-    for i in f_all_views[j]:
+    for i in range (len(mesh.vertices)):
         if (i, j) in M:
             f_all_views[j][i] = f_all_views[j][i] + optimal_x[index_map[(i, j)]]
-
-print(f_all_views)
+print('Nouvelle fonction d\'intensité :')
+print(f_all_views)  # nouvelle valeur de f pour le sommet 0 et la vue 1
+# valeur de g pour le sommet 0 et la vue 1
 
 
 

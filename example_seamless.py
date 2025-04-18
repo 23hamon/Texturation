@@ -27,8 +27,8 @@ faces = np.array([
 
 mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
 vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
-shared = np.intersect1d(mesh.faces[0], mesh.faces[1])
 
+# shared = np.intersect1d(mesh.faces[0], mesh.faces[1])
 # if len(shared) == 2:
 #     segment = trimesh.load_path(mesh.vertices[shared])
 #     scene = trimesh.Scene([mesh, segment])
@@ -133,6 +133,7 @@ g_vector = lsqr(A, b)[0]
 
 print("g_vector:")
 print(g_vector)
+
 
 #mise à jour de la fonction d'intensité
 for (i, j) in M:
