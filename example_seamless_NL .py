@@ -2,17 +2,19 @@ import trimesh
 import numpy as np
 from collections import defaultdict
 import xatlas
-from scipy.sparse import lil_matrix
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
-
-#np.set_printoptions(threshold=np.inf)
+from scipy.optimize import least_squares
+from skimage.draw import polygon
 np.random.seed(42)
+
+
+#imports
 data = np.load('fichiers_intermediaires/images.npz')
 Vue1 = data['Vue1']
 Vue2 = data['Vue2']
 Vue3 = data['Vue3']
+texture_map = np.load('fichiers_intermediaires/ex_texture_map.npy')
 
 
 # EXEMPLE carré divisé en deux triangles
@@ -27,32 +29,20 @@ faces = np.array([
     [0, 2, 3]   # triangle 2
 ])
 
+#création du mesh, et de son mapping
 mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
 vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
 shared = np.intersect1d(mesh.faces[0], mesh.faces[1])
-uvs[:, 1] = 1 - uvs[:, 1] #le mapping est inversé
+uvs = 1 - uvs #le mapping est inversé pour avoir 0 en bas à gauche et 1 en bas à droite 
 
+
+#Best views
 views = {0: Vue1, 1: Vue2, 2: Vue3} #on a donc trois vues différentes 
-
-
-
-# best views
-
-n_views = 3
+n_views = len(views)
 n_faces = len(mesh.faces)
 Wij = np.random.rand(n_faces, n_views)
 best_views = np.argmin(Wij, axis=1) #et on récupère les meilleures vues pour chaque face , ici vue1 pour la face 0, et vue3 pour la face 1
 
-# plt.figure(figsize=(15, 5))
-# for i in range(n_faces):
-#     img = views[best_views[i]]  # Sélection de l'image correspondante à la meilleure vue pour la face i
-#     plt.subplot(1, n_faces, i+1)
-#     plt.imshow(img)
-#     plt.axis('off')
-#     plt.title(f'Face {i} - Vue {best_views[i]+1}')
-
-# plt.tight_layout()
-# plt.show()
 
 # sommets adjacents
 
@@ -84,59 +74,57 @@ M = [(i, j) for j, vertices in C.items() for i in vertices]
 n_vertices = len(mesh.vertices)
 n_views = Wij.shape[1]
 
-#on crée une image de texture qui prend la Vue1 pour colorer la face 0 du maillage, et la Vue3 pour colorer la face 1 du maillage
 
-texture_image = np.zeros((512, 512, 3), dtype=np.uint8)
-projected = vertices[:, :2] * [511, 511]
-for i, face in enumerate(faces):
-    img = views[best_views[i]]  
-    v0, v1, v2 = projected[face].astype(np.float32)
-    # bounding box du triangle
-    min_x = max(int(np.floor(min(v0[0], v1[0], v2[0]))), 0)
-    max_x = min(int(np.ceil(max(v0[0], v1[0], v2[0]))), texture_image.shape[1] - 1)
-    min_y = max(int(np.floor(min(v0[1], v1[1], v2[1]))), 0)
-    max_y = min(int(np.ceil(max(v0[1], v1[1], v2[1]))), texture_image.shape[0] - 1)
+def intensity(view_id, color_channel):
+    image = views[view_id]
+    h, w = image.shape[:2]
+    f = np.zeros((h, w))
 
-    # Matrice de transformation (pour la barycentricité)
-    T = np.array([[v1[0] - v0[0], v2[0] - v0[0]], [v1[1] - v0[1], v2[1] - v0[1]]])
-    T_inv = np.linalg.inv(T)
+    for face in mesh.faces:
+        uvs_coords = uvs[face]
+        c = (uvs_coords[:, 0] * w).astype(int)
+        r = (uvs_coords[:, 1] * h).astype(int)
+        rr, cc = polygon(r, c)
+        for y, x in zip(rr, cc):
+            if 0 <= x < w and 0 <= y < h: 
+                f[y, x] = image[int(y), int(x), color_channel]
+    return f
 
-    # Remplir chaque pixel du triangle avec la couleur de la vue
-    for x in range(min_x, max_x + 1):
-        for y in range(min_y, max_y + 1):
-            p = np.array([x - v0[0], y - v0[1]])
-            u, v = T_inv @ p
-            w = 1 - u - v
 
-            if 0 <= u <= 1 and 0 <= v <= 1 and 0 <= w <= 1:
-                # Interpolation barycentrique
-                color = u * img[int(v0[1]), int(v0[0])] + v * img[int(v1[1]), int(v1[0])] + w * img[int(v2[1]), int(v2[0])]
-                texture_image[y, x] = np.clip(color, 0, 255)
 
-# Affichage de l'image de texture
-plt.imshow(texture_image)
-plt.axis('off')
-plt.show()
+view_id = 0
+color_channel = 2  
+
+rouge_intensity = intensity(view_id, 0)
 
 # # Fonctions d'intensité pour chaque vue
-# def intensity(texture_map, n_vertices, n_views, color=0):
-#     """"
-#     param color: couleur à extraire (0 = rouge, 1 = vert, 2 = bleu)
-#     output: tableau 2D de forme (n_views, n_vertices) contenant les intensités
-#     """
+# def intensity(view_id,color):
+#     f = np.zeros((texture_map.shape[0], texture_map.shape[1])) #matrice vide
+#     for face in mesh.faces:
+#         image = views[view_id]
+#         uvs_coords = uvs[face] #on récupère les coordonnées UV des sommets de la face
+#         r = uvs_coords[:, 0] * image.shape[1] #on récupère les lignes de chaque sommet
+#         c = uvs_coords[:, 1] * image.shape[0] #et les colonnes de chaque sommet
+#         rr, cc = polygon(r, c) #on crée un polygone
+#         rr = np.clip(rr, 0, image.shape[0] - 1) #pas sortir de l'image
+#         cc = np.clip(cc, 0, image.shape[1] - 1)
+#         for pixel in zip(rr, cc):
+#             x, y = pixel
+#             color = image[x, y, color] #0,1ou2 si on veut  rouge, vert ou bleu
+#             #on va mettre la couleur dans la texture_map
+#             f[x, y] = color
+#     return f
+
+# rouge_intensity = intensity(Vue1, 0)
+# print(rouge_intensity)
+
+
+
+
+        #entre ces trois sommets, on va récupérer les couleurs de tous les pixels
+        #dans la vue, et on va les mettre dans une liste
+
     
-
-#     for view in range(n_views):
-#         intensity_map[view] = texture_map[view][:, color]
-
-#     return intensity_map
-
-# # Calcul de la fonction d'intensité pour chaque vue automatiquement
-# f_all_views = {}
-
-# for view_id, view in views.items():
-#     f_all_views[view_id] = intensity(view, len(mesh.vertices), n_views, color=0)
-
 # # Systeme equations lineaitre
 # lambda_seam = 100
 # index_map = { (i, j): idx for idx, (i, j) in enumerate(M) }
@@ -187,14 +175,14 @@ plt.show()
 # print(optimal_x) # valeur de g pour le sommet 0 et la vue 0
 # print(f_all_views)
 
-# # Mettre à jour f_all_views avec la nouvelle fonction d'intensité
-# for j in f_all_views:
-#     for i in range (len(mesh.vertices)):
-#         if (i, j) in M:
-#             f_all_views[j][i] = f_all_views[j][i] + optimal_x[index_map[(i, j)]]
-# print('Nouvelle fonction d\'intensité :')
-# print(f_all_views)  # nouvelle valeur de f pour le sommet 0 et la vue 1
-# # valeur de g pour le sommet 0 et la vue 1
+# # Mettre à jour f_all_views avec la nouvelle fonction d'intensité (g + f_all_views)
+# for view_id, view in views.items():
+#     for i in range(len(mesh.vertices)):
+#         if (i, view_id) in M:
+#             f_all_views[view_id][i] = optimal_x[index_map[(i, view_id)]] + f_all_views[view_id][i]
+#         else:
+#             f_all_views[view_id][i] = 0
+     
 
 
 

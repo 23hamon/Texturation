@@ -32,8 +32,6 @@ uvs[:, 1] = 1 - uvs[:, 1] #le mapping est inversé
 
 #creation de 3 images avec des nuances de rouge comme si c'étaient 3 vues différentes du même objet
 
-
-# 2. Couleurs par sommet (attention, dtype float32)
 colors = np.array([
     [255, 0, 0],     # sommet 0 - rouge vif
     [0, 255, 0],     # sommet 1 - vert vif
@@ -41,7 +39,7 @@ colors = np.array([
     [255, 255, 0]    # sommet 3 - jaune vif
 ], dtype=np.float32)
 
-# 3. Fonction principale
+
 
 def create_view_image(vertices, faces, colors, image_size=512, brightness_factor=1.0):
     image = np.zeros((image_size, image_size, 3), dtype=np.uint8)
@@ -55,7 +53,6 @@ def create_view_image(vertices, faces, colors, image_size=512, brightness_factor
         v0, v1, v2 = projected[face].astype(np.float32)
         c0, c1, c2 = colors[face]
 
-        # Bounding box
         min_x = max(int(np.floor(min(v0[0], v1[0], v2[0]))), 0)
         max_x = min(int(np.ceil(max(v0[0], v1[0], v2[0]))), image_size - 1)
         min_y = max(int(np.floor(min(v0[1], v1[1], v2[1]))), 0)
@@ -83,7 +80,7 @@ def create_view_image(vertices, faces, colors, image_size=512, brightness_factor
 
     return image
 
-# 4. Générer et afficher l’image
+
 Vue1 = create_view_image(vertices, faces, colors,512,0.5)
 Vue2 = create_view_image(vertices, faces, colors,512,0.9)
 Vue3 = create_view_image(vertices, faces, colors,512,1.8)
@@ -91,13 +88,14 @@ Vue3 = create_view_image(vertices, faces, colors,512,1.8)
 np.savez('fichiers_intermediaires/images.npz', Vue1=Vue1, Vue2=Vue2, Vue3=Vue3)
 
 
-images = [Vue1, Vue2, Vue3]
-titles = ['Luminosité x 0.5', 'Luminosité x 1.2', 'Luminosité x 1.8']
-plt.figure(figsize=(15, 5))
-for i, (img, title) in enumerate(zip(images, titles), 1):
-    plt.subplot(1, 3, i)
-    plt.imshow(img)
-    plt.axis('off')
-    plt.title(f'Image {i} - {title}')
-plt.tight_layout()
-plt.show()
+# images = [Vue1, Vue2, Vue3]
+# titles = ['Luminosité x 0.5', 'Luminosité x 1.2', 'Luminosité x 1.8']
+# plt.figure(figsize=(15, 5))
+# for i, (img, title) in enumerate(zip(images, titles), 1):
+#     plt.subplot(1, 3, i)
+#     plt.imshow(img)
+#     plt.axis('off')
+#     plt.title(f'Image {i} - {title}')
+# plt.tight_layout()
+# plt.show()
+
