@@ -21,7 +21,7 @@ faces = np.array([
 mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
 vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
 shared = np.intersect1d(mesh.faces[0], mesh.faces[1])
-uvs = 1 - np.round(uvs[:, [1, 0]])
+uvs = 1 - (uvs[:, [1, 0]])
 
 vmapping = np.save('seamless/mapping.npy', vmapping)
 indices = np.save('seamless/indices.npy', indices)
