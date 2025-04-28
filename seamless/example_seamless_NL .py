@@ -109,11 +109,6 @@ def get_intensity_vertice(f, view_id, vertex_id):
     return 0
 
 
-lambda_seam = 100
-index_map = { (i, j): idx for idx, (i, j) in enumerate(M) }
-n = len(M)
-
-
 
 # on réupére des intensités des sommets pour chaque vue
 def intensity_all_views(views, intensities, M):
@@ -133,6 +128,12 @@ def intensity_all_views(views, intensities, M):
     return all_views_intensities
 
 
+
+#CALCUL DE G
+
+lambda_seam = 100
+index_map = { (i, j): idx for idx, (i, j) in enumerate(M) }
+n = len(M)
 
 
 # def g(x):
@@ -188,6 +189,8 @@ red_all_views = intensity_all_views(views, intensities_red, M)
 green_all_views = intensity_all_views(views, intensities_green, M)
 blue_all_views = intensity_all_views(views, intensities_blue, M)
 
+
+
 # 3. Mise à jour des intensités avec optimal_x
 for (i, j) in red_all_views:
     idx = index_map.get((i, j), None)
@@ -197,8 +200,6 @@ for (i, j) in red_all_views:
 #à présent, on crée une image de text à partir de toutes les vues, en interpolant pour colorer tous les pixels. 
 texture_size = 512
 texture_image = np.ones((texture_size, texture_size, 3), dtype=np.uint8) * 255
-
-
 def color(view, vertex_id, color_channel=0):
     """
     Récupère la couleur d'un sommet pour une vue donnée et un canal de couleur spécifique.
@@ -207,18 +208,20 @@ def color(view, vertex_id, color_channel=0):
         return red_all_views[(vertex_id, view)]
     else:
         return 0
-
 for face_id, face in enumerate(mesh.faces):
-    for view_id in best_views:
-        if view_id != best_views[face_id]:
-            print("oulala")
+    for view_id, view in enumerate(views):
         h, w = texture_image.shape[:2]
         uvs_coord = uvs[face]
         img_coords = (uvs_coord * [w, h]).astype(int)
         img_coords = np.clip(img_coords, 0, [w - 1, h - 1])
-        colors = [[red_all_views[view_id,vertex], 0, 0] for vertex in face]
+        if (vertex, view_id) in red_all_views:
+            colors = [[red_all_views[vertex, view_id], 0, 0] for vertex in face]
+        else:
+            print(f"Clé ({view_id}, {vertex}) non trouvée dans red_all_views")
+            colors = [[0, 0, 0] for vertex in face] 
         texture_triangles(uvs_coord, colors, texture_image)
         print("face", face_id, "view", view_id, "colors", colors, "OK")
+
 
 # Affichage
 plt.imshow(texture_image, origin='lower', cmap='Reds')

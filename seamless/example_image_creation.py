@@ -81,9 +81,9 @@ def create_view_image(vertices, faces, colors, image_size=512, brightness_factor
     return image
 
 
-Vue1 = create_view_image(vertices, faces, colors,512,0.5)
-Vue2 = create_view_image(vertices, faces, colors,512,0.9)
-Vue3 = create_view_image(vertices, faces, colors,512,1.8)
+Vue1 = create_view_image(vertices, faces, colors,512,0.8)
+Vue2 = create_view_image(vertices, faces, colors,512,1.3)
+Vue3 = create_view_image(vertices, faces, colors,512,1.9)
 
 np.savez('seamless/images.npz', Vue1=Vue1, Vue2=Vue2, Vue3=Vue3)
 
@@ -98,4 +98,3 @@ for i, (img, title) in enumerate(zip(images, titles), 1):
     plt.title(f'Image {i} - {title}')
 plt.tight_layout()
 plt.show()
-
