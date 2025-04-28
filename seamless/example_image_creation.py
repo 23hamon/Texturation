@@ -23,8 +23,11 @@ vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
 shared = np.intersect1d(mesh.faces[0], mesh.faces[1])
 uvs = 1 - np.round(uvs[:, [1, 0]])
 
-print(vmapping)
-print(uvs)
+vmapping = np.save('seamless/mapping.npy', vmapping)
+indices = np.save('seamless/indices.npy', indices)
+uvs = np.save('seamless/uvs.npy', uvs)
+mesh.export('seamless/mesh.obj')
+
 
 # if len(shared) == 2:
 #     segment = trimesh.load_path(mesh.vertices[shared])
