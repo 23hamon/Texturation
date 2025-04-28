@@ -14,7 +14,6 @@ views = {0: Vue1, 1: Vue2, 2: Vue3}
 
 indices = np.load('seamless/indices.npy')
 uvs = np.load('seamless/uvs.npy')
-uvs = 1 - np.round(uvs[:, [1, 0]])  # Inversion
 vmapping = np.load('seamless/mapping.npy')
 mesh = trimesh.load('seamless/mesh.obj')
 
@@ -80,5 +79,5 @@ for face_id, face in enumerate(faces):
 # plt.title('Texture générée à partir des vues avec vertices')
 # plt.show()
 
-# Sauvegarde
-np.save('seamless/text_map.npy', texture_image)
+# # Sauvegarde
+# np.save('seamless/text_map.npy', texture_image)
