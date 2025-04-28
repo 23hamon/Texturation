@@ -26,7 +26,6 @@ n_faces = len(faces)
 Wij = np.random.rand(n_faces, n_views)
 best_views = np.argmin(Wij, axis=1)
 
-
 # init de la texture blanche
 texture_size = 512
 texture_image = np.ones((texture_size, texture_size, 3), dtype=np.uint8) * 255
@@ -81,5 +80,5 @@ for face_id, face in enumerate(faces):
 # plt.title('Texture générée à partir des vues avec vertices')
 # plt.show()
 
-# # Sauvegarde
-# np.save('seamless/text_map.npy', texture_image)
+# Sauvegarde
+np.save('seamless/text_map.npy', texture_image)
