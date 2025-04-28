@@ -12,7 +12,6 @@ np.random.seed(42)
 # --- Chargement des données ---
 data = np.load('seamless/images.npz')
 Vue1, Vue2, Vue3 = data['Vue1'], data['Vue2'], data['Vue3']
-
 texture_map = np.load('seamless/text_map.npy')
 indices = np.load('seamless/indices.npy')
 uvs = np.load('seamless/uvs.npy')
@@ -67,19 +66,30 @@ def intensity(view_id, color_channel):
                 f[y, x] = image[int(y), int(x), color_channel]
     return f
 
+# plt.figure(figsize=(6,6))
+# im = plt.imshow(intensity(0, 1), origin='lower')
+# plt.axis('off')
+# plt.title('Intensité verte Vue 0')
+# plt.colorbar(im, label="Intensité")
+# plt.show()
+
+
 def get_intensity_vertice(f, view_id, vertex_id):
     h, w = f.shape
     for face_id, face in enumerate(mesh.faces):
         if best_views[face_id] != view_id:
             continue
-        if vertex_id in face:
+        for vertex_id in face:
             local_index = np.where(face == vertex_id)[0][0]
             uv = uvs[face[local_index]]
             x = int(uv[0] * w)
             y = int(uv[1] * h)
             if 0 <= x < w and 0 <= y < h:
-                return f[y, x]
+                return f[y,x]
     return 0
+
+print(intensity(0, 2)[511, 511])
+print(get_intensity_vertice(intensity(0, 2), 0, 2))
 
 def intensity_all_views(views, intensities, M):
     all_views_intensities = {}
@@ -129,77 +139,53 @@ def build_g_function(intensity_all_views, L, M, index_map, lambda_seam=100):
 
 
 # -- main  --
-def run_texture_generation():
-    print("\n--- Début de la génération de la texture complète (R, G, B) ---")
-    
-    # Calcul des intensités pour chaque canal
-    intensities_per_channel = []
-    all_views_per_channel = []
 
-    for channel_id in range(3):
-        intensities = {view_id: intensity(view_id, channel_id) for view_id in range(n_views)}
-        all_views = intensity_all_views(views, intensities, M)
-        intensities_per_channel.append(intensities)
-        all_views_per_channel.append(all_views)
+def run_channel(channel_id, color_name):
+    print(f"\n--- Traitement du canal {color_name.upper()} ---")
+    # Calculer les intensités pour toutes les vues
+    intensities = {view_id: intensity(view_id, channel_id) for view_id in range(n_views)}
+    all_views = intensity_all_views(views, intensities, M)
+    print("Intensités :", intensity(0,channel_id))
 
-    # Optimisation pour chaque canal
-    optimal_x_per_channel = []
+    # Optimiser
+    g = build_g_function(all_views, L, M, index_map)
+    x0 = np.zeros(n)
+    res = least_squares(g, x0, jac='2-point')
+    optimal_x = res.x
+    print("Résultat de l'optimisation :", optimal_x)
 
-    for channel_id in range(3):
-        g = build_g_function(all_views_per_channel[channel_id], L, M, index_map)
-        x0 = np.zeros(n)
-        res = least_squares(g, x0, jac='2-point')
-        optimal_x_per_channel.append(res.x)
-        print(f"Canal {channel_id} : Coût final = {res.x}")
+    # Mise à jour des intensités avec la solution optimale
+    for (i, j) in all_views:
+        idx = index_map.get((i, j), None)
+        if idx is not None and (i,j) in M:
+            all_views[(i, j)] += optimal_x[idx]
+            all_views[(i, j)] = np.clip(all_views[(i, j)], 0, 255)
 
-    # Mise à jour des intensités optimisées
-    for channel_id in range(3):
-        all_views = all_views_per_channel[channel_id]
-        optimal_x = optimal_x_per_channel[channel_id]
-        for (i, j) in all_views:
-            idx = index_map.get((i, j), None)
-            if idx is not None and (i, j) in M:
-                all_views[(i, j)] += optimal_x[idx]
-                all_views[(i, j)] = np.clip(all_views[(i, j)], 0, 255)
-        print(f"Intensités optimisées pour le canal {channel_id} :")
-        for (i, j) in M:
-            idx = index_map.get((i, j), None)
-            if idx is not None and (i, j) in M:
-                all_views[(i, j)] = np.clip(all_views[(i, j)], 0, 255)
-                print(f"Vertex {i}, Vue {j} : Intensité optimisée = {all_views[(i, j)]}")
-    # Génération de l'image de texture finale
+    # Générer l'image de texture pour ce canal
     texture_size = 512
     texture_image = np.ones((texture_size, texture_size, 3), dtype=np.uint8) * 255
 
     for face_id, face in enumerate(mesh.faces):
-        for view_id in best_views:
+        for view_id in range(n_views):
             h, w = texture_image.shape[:2]
             uvs_coord = uvs[face]
             img_coords = (uvs_coord * [w, h]).astype(int)
             img_coords = np.clip(img_coords, 0, [w - 1, h - 1])
 
-            colors = []
-            for vertex in face:
-                print(f"Traitement du vertex {vertex} dans la vue {view_id}")
-                rgb = [
-                    all_views_per_channel[0].get((vertex, view_id), 0),  # rouge
-                    all_views_per_channel[1].get((vertex, view_id), 0),  # vert
-                    all_views_per_channel[2].get((vertex, view_id), 0)   # bleu
-                ]
-                if vertex == 1:
-                    print(all_views_per_channel[1].get((vertex, view_id), 0))
-                colors.append(rgb)
-
+            colors = [[all_views.get((vertex, view_id), 0) if k == channel_id else 0 for k in range(3)] for vertex in face]
             texture_triangles(uvs_coord, colors, texture_image)
 
-        # Affichage
-        plt.figure(figsize=(8, 8))
-        plt.imshow(texture_image, origin='lower')
-        plt.axis('off')
-        plt.title('Texture finale générée (R, G, B)')
-        plt.show()
+    plt.figure(figsize=(6,6))
+    plt.imshow(texture_image, origin='lower')
+    plt.axis('off')
+    plt.title(f'Texture générée ({color_name})')
+    plt.show()
+
+
 
 # --- main ---
-run_texture_generation()
+# run_texture_generation()
+run_channel(0, "rouge")
+# run_channel(1, "vert")
 
-
+run_channel(2, "bleu")
