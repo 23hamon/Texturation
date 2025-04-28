@@ -23,7 +23,6 @@ views = {0: Vue1, 1: Vue2, 2: Vue3}
 n_views = len(views)
 n_faces = len(mesh.faces)
 
-print(uvs)
 # Best views ici déterminé (comme pour les autres fichiers)
 best_views = [0, 2]
 
@@ -60,25 +59,23 @@ def intensity(view_id, channel_id):
         uvs_coords = uvs[face]
         c = (uvs_coords[:, 0] * w).astype(int)
         r = (uvs_coords[:, 1] * h).astype(int)
-        c = np.clip(c, 0, w - 1)
-        r = np.clip(r, 0, h - 1)
         rr, cc = polygon(r, c)
         for y, x in zip(rr, cc):
             f[y, x] = image[int(y), int(x), channel_id]
     return f
 
+#ENFAITE ICI LA MATRICE EST REMPLIE AU NIVEAU DE (0,511) AVEC LA COULEUR DU CANAL VERT; MAIS NOUS IL NOUS FAUT QUE CETTE VALEUR FIGURE EN (511 511)
+
+
+# green = intensity(0, 1)
+# print(green[0,:])
+
 # plt.figure(figsize=(6,6))
-# im = plt.imshow(intensity(0,0), origin='lower')
+# im = plt.imshow(green, origin='lower')
 # plt.axis('off')
 # plt.title('Intensité VERTE Vue 0')
 # plt.colorbar(im, label="Intensité")
 # plt.show()
-
-# print(Vue1[511, 511])
-
-# red = intensity(0, 0)
-# print(red[511, :])
-
 
 def get_intensity_vertice(view_id, vertex_id, channel_id):
     f = intensity(view_id, channel_id)
@@ -89,12 +86,9 @@ def get_intensity_vertice(view_id, vertex_id, channel_id):
     y = (uv_vertex[1] * h).astype(int)
     x = np.clip(x, 0, w - 1)
     y = np.clip(y, 0, h - 1)
-    print(x,y)
-    if (x, y) not in M:
-        return 0
     return f[y, x]
 
-print("Intensité du vertex 0 dans la vue 0 (canal bleu) :", get_intensity_vertice(0, vertex_id=2, channel_id=2))
+print("Intensité du sommet 1 dans la vue 0 (canal vert) :", get_intensity_vertice(0, vertex_id=1, channel_id=1))
 
 
 def intensity_all_views(views, M, channel_id):
@@ -107,6 +101,8 @@ def intensity_all_views(views, M, channel_id):
                 all_views_intensities[(vertex_id, view_id)] = 0
     return all_views_intensities
 
+green_all_views = intensity_all_views(views, M, channel_id=1)
+print("green", green_all_views)
 
 # calcul de G
 def build_g_function(intensity_all_views, L, M, index_map, lambda_seam=100):
@@ -126,13 +122,13 @@ def build_g_function(intensity_all_views, L, M, index_map, lambda_seam=100):
         for (i, j1) in M:
             for (i2, j2) in M:
                 if i == i2 and j1 != j2:
-                    int_i_j1 = intensity_all_views[(i, j1)]
-                    int_i_j2 = intensity_all_views[(i, j2)]
+                    intensity_i_j1 = intensity_all_views[(i, j1)]
+                    intensity_i_j2 = intensity_all_views[(i, j2)]
                     idx_j1 = index_map[(i, j1)]
                     idx_j2 = index_map[(i2, j2)]
                     g_j1 = x[idx_j1]
                     g_j2 = x[idx_j2]
-                    residuals_same_view.append(g_j1 - g_j2 - (int_i_j2 - int_i_j1))
+                    residuals_same_view.append(g_j1 - g_j2 - (intensity_i_j2 - intensity_i_j1))
 
         cost_smoothness = np.sum(np.array(residuals_smoothness)**2)
         cost_same_view = np.sum(np.array(residuals_same_view)**2)
@@ -190,5 +186,7 @@ def run_channel(channel_id, color_name):
 
 # # --- main ---
 # run_channel(0, "rouge")
-# run_channel(1, "vert")
-run_channel(2, "bleu")
+run_channel(1, "vert")
+#run_channel(2, "bleu")
+
+#on génère une image de texture qui prend en compte les 3 canaux
