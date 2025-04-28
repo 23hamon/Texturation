@@ -15,25 +15,14 @@ Vue1 = data['Vue1']
 Vue2 = data['Vue2']
 Vue3 = data['Vue3']
 texture_map = np.load('fichiers_intermediaires/ex_texture_map.npy')
+indices = np.load('fichiers_intermediaires/indices.npy')
+uvs = np.load('fichiers_intermediaires/uvs.npy')
+vmapping = np.load('fichiers_intermediaires/mapping.npy')
+mesh = trimesh.load('fichiers_intermediaires/mesh.obj')
 
-
-# EXEMPLE carré divisé en deux triangles
-vertices = np.array([
-    [0, 0, 0],  # 0
-    [1, 0, 0],  # 1
-    [1, 1, 0],  # 2
-    [0, 1, 0]   # 3
-])
-faces = np.array([
-    [0, 1, 2],  # triangle 1
-    [0, 2, 3]   # triangle 2
-])
-
-#création du mesh, et de son mapping
-mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
-vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
-shared = np.intersect1d(mesh.faces[0], mesh.faces[1])
-uvs = 1 - uvs #le mapping est inversé pour avoir 0 en bas à gauche et 1 en bas à droite 
+print("\n--- UVs par sommet ---")
+for i, uv in enumerate(uvs):
+    print(f"Sommet {i} : UV = {uv}")
 
 
 #Best views
@@ -79,8 +68,9 @@ def intensity(view_id, color_channel):
     image = views[view_id]
     h, w = image.shape[:2]
     f = np.zeros((h, w))
-
-    for face in mesh.faces:
+    for face_id, face in enumerate(mesh.faces):
+        if best_views[face_id] != view_id:
+            continue  # on ignore les faces qui ne proviennent pas de cette vue
         uvs_coords = uvs[face]
         c = (uvs_coords[:, 0] * w).astype(int)
         r = (uvs_coords[:, 1] * h).astype(int)
@@ -91,32 +81,63 @@ def intensity(view_id, color_channel):
     return f
 
 
+#fonction pour récupérer la fonction d'intensité d'un sommet pour une vue donnée
+def get_intensity_vertice(f, view_id, vertex_id):
+    h, w = f.shape
 
-view_id = 0
-color_channel = 2  
+    for face_id, face in enumerate(mesh.faces):
+        if best_views[face_id] != view_id:
+            continue
+        if vertex_id in face:
+            local_index = np.where(face == vertex_id)[0][0]
+            uv = uvs[face[local_index]]
+            print(uv)
+            x = int(uv[0])
+            y = int(uv[1])
+            print(x, y)
+            if 0 <= x < w and 0 <= y < h:
+                return f[y, x]
+    return None
 
-rouge_intensity = intensity(view_id, 0)
+            
 
-# # Fonctions d'intensité pour chaque vue
-# def intensity(view_id,color):
-#     f = np.zeros((texture_map.shape[0], texture_map.shape[1])) #matrice vide
-#     for face in mesh.faces:
-#         image = views[view_id]
-#         uvs_coords = uvs[face] #on récupère les coordonnées UV des sommets de la face
-#         r = uvs_coords[:, 0] * image.shape[1] #on récupère les lignes de chaque sommet
-#         c = uvs_coords[:, 1] * image.shape[0] #et les colonnes de chaque sommet
-#         rr, cc = polygon(r, c) #on crée un polygone
-#         rr = np.clip(rr, 0, image.shape[0] - 1) #pas sortir de l'image
-#         cc = np.clip(cc, 0, image.shape[1] - 1)
-#         for pixel in zip(rr, cc):
-#             x, y = pixel
-#             color = image[x, y, color] #0,1ou2 si on veut  rouge, vert ou bleu
-#             #on va mettre la couleur dans la texture_map
-#             f[x, y] = color
-#     return f
+print("\n--- UVs par face et sens ---")
+def signed_area(uvs):
+    return 0.5 * ((uvs[0,0]*uvs[1,1] - uvs[1,0]*uvs[0,1]) +
+                  (uvs[1,0]*uvs[2,1] - uvs[2,0]*uvs[1,1]) +
+                  (uvs[2,0]*uvs[0,1] - uvs[0,0]*uvs[2,1]))
 
-# rouge_intensity = intensity(Vue1, 0)
-# print(rouge_intensity)
+
+
+image = Vue2
+h, w = image.shape[:2]
+
+plt.figure(figsize=(8, 8))
+plt.imshow(image)  # pour être cohérent avec les UVs
+plt.title("Vue 2 avec triangles et numéros des sommets")
+plt.axis('off')
+
+# Tracer les triangles
+for face in mesh.faces:
+    face_uv = uvs[face]
+    x = face_uv[:, 0] * w
+    y = face_uv[:, 1] * h
+
+    # Fermer le triangle
+    x = np.append(x, x[0])
+    y = np.append(y, y[0])
+
+    plt.plot(x, y, color='white', linewidth=1.5)
+
+# Afficher les numéros de sommets
+for idx, uv in enumerate(uvs):
+    x = uv[0] * w
+    y = uv[1] * h
+    plt.text(x, y, str(idx), color='yellow', fontsize=12, ha='center', va='center', weight='bold')
+
+plt.show()
+
+
 
 
 
