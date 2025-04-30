@@ -1,7 +1,6 @@
 import open3d as o3d
 import numpy as np
 import cv2
-#from data.param_calib import n_l, n_r
 from calib_luca import n_l, n_r
 from backprojection import back_projeter
 from utils import get_image_data
