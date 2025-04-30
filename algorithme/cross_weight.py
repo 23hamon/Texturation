@@ -152,7 +152,7 @@ if __name__ == "__main__" :
     edges_set = compute_edges(Fp)
     print(f"Nombre d'edges : {len(edges_set)}")
 
-    Wpqjk = build_Wpqjk(N, K, Vjyxc, "l", rot_images, t_images, vertices, edges_set, Mpj, 100)
+    Wpqjk = build_Wpqjk(N, K, Vjyxc, "l", rot_images, t_images, vertices, edges_set, Mpj, 10)
 
     print(Wpqjk[(0,7)])
     np.save('tensors/Wpqjk.npy', Wpqjk, allow_pickle=True)
