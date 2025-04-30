@@ -2,7 +2,7 @@ import numpy as np
 import open3d as o3d
 from tqdm import tqdm
 import calib_luca as param_calib
-from utils import get_image_data, FASTr0_rd
+from utils import get_image_data
 from backprojection import back_projeter
 
 def _cost_func(distance, cos_angle, float_inf, epsilon=0.5) :

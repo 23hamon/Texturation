@@ -1,18 +1,10 @@
 import numpy as np
-#from ..calibration.utils import trace_refract_ray
-#import data.param_calib as param_calib
 import calib_luca as param_calib
 import json
 import cv2
 from numba import njit
 
-# import sys
-# import os
-# #sys.path.append(os.path.join(os.path.dirname(__file__), 'acceleration_cpp'))
-# #import utils_cpp
 
-
-import time
 
 @njit(error_model="numpy")
 def inverse_3x3(A):
@@ -143,44 +135,6 @@ def r0_rd(Y, R=np.eye(3), t=np.zeros((3,)), cam="l") :
     rd_norm = ((rd) ** 2).sum() ** 0.5
     return r0, rd/rd_norm
 
-# def ULTRA_FASTr0_rd(Y, R=np.eye(3), t=np.zeros((3,)), cam="l") :
-#     """
-#     Donne r0 et rd pour un point Y = [a, b] dans l'image
-#     /!\ -- R et t sont la matrice de rotation et le vecteur de translation 
-#     du repere monde vers le repere gauche
-#     """
-#     t.reshape((3,))
-#     if cam == "l" :
-#         r0_cam, rd_cam = utils_cpp.py_trace_refract_ray(Y[0], Y[1], 
-#                                                         param_calib.air_K_l_inv, 
-#                                                         param_calib.D_l, 
-#                                                         param_calib.n_l, 
-#                                                         param_calib.THICKNESS, 
-#                                                         param_calib.ETA_GLASS, 
-#                                                         param_calib.ETA_WATER)
-#         # passage du repere gauche au repere monde
-#         r0 = R.T @ r0_cam - R.T @ t
-#         rd = R.T @ rd_cam
-#         # r0 = R @ r0_cam + t
-#         # rd = R @ rd_cam
-#     elif cam == "r" :
-#         r0_cam, rd_cam = utils_cpp.py_trace_refract_ray(Y[0], Y[1],
-#                                                         param_calib.air_K_r_inv, 
-#                                                         param_calib.D_r, 
-#                                                         param_calib.n_r, 
-#                                                         param_calib.THICKNESS, 
-#                                                         param_calib.ETA_GLASS, 
-#                                                         param_calib.ETA_WATER)
-#         # passage du repere droit au repere monde
-#         R_DG = param_calib.R_DG
-#         t_DG = param_calib.t_DG
-#         r0 = R.T @ (R_DG.T @ r0_cam - R_DG.T @ t_DG) - R.T @ t
-#         rd = R.T @ R_DG.T @ rd_cam
-#     else :
-#         raise ValueError(f"Incorrect value : {cam}. 'cam' must be 'l' or 'r'")
-#     rd_norm = ((rd) ** 2).sum() ** 0.5
-#     return r0, rd/rd_norm
-
 @njit(error_model="numpy")
 def FASTr0_rd(Y, R=np.eye(3), t=np.zeros((3,)), cam="l") :
     """
@@ -262,20 +216,7 @@ def closest_point_to_two_lines(ro1, rd1, ro2, rd2):
 
 if __name__ == "__main__" :
     
-    # rot, t = get_image_data(17)
-    # print(r0_rd([15,20], rot, t, "r"))
-    # print(ULTRA_FASTr0_rd([15,20], rot, t, "r"))
-
-    # for _ in range(1000) :
-    #     X = np.array([32,45,0])
-    #     Y = [np.random.randint(0,3000) ,np.random.randint(0,2000)]
-    #     r01, rd1 = r0_rd(Y)
-    #     r02, rd2 = ULTRA_FASTr0_rd(Y)
-    #     cost1 = distance_X_to_D_r0_rd(X, r01, rd1)
-    #     cost2 = distance_X_to_D_r0_rd(X, r02, rd2)
-    #     diff=(cost1-cost2)
-    #     if np.mean(diff) > 0.5e-6 :
-    #         print(f"diff = {diff},\n Y = {Y},\n cost1 = {cost1},\n cost2 = {cost2},\n r01 = {r01},\n r02 = {r02},\n rd1 = {rd1},\n rd2 = {rd2}")
+    import time
     k_time = 100000
 
     time1 = time.time()
@@ -288,7 +229,3 @@ if __name__ == "__main__" :
         k = FASTr0_rd(np.array([np.random.randint(0,3000) ,np.random.randint(0,2000)], dtype=np.float64))
     print(f"python optimized r0_rd : {time.time()-time2}")
 
-    # time3 = time.time()
-    # for _ in range(k_time) :
-    #     k = ULTRA_FASTr0_rd([np.random.randint(0,3000) ,np.random.randint(0,2000)])
-    # print(f"c++ r0_rd : {time.time()-time3}")
