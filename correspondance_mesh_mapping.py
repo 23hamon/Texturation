@@ -13,6 +13,8 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import pyglet
 from tqdm import tqdm
 from skimage.draw import polygon
+from PIL import Image
+
 
 mesh = trimesh.load_mesh('fichiers_intermediaires/mesh_visible_low.ply')
 vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
@@ -97,11 +99,11 @@ plt.axis('off')
 plt.title("Faces remplies à partir du mapping 2D")
 plt.show()
 
+texture_map = np.save("fichiers_intermediaires/texture_map.npy", white_image)
 
-from PIL import Image
 
 texture_image = Image.fromarray(white_image)  
-texture_image.save("texture_image.png")
+texture_image.save("texture_image2.png")
 
 
 
