@@ -11,11 +11,11 @@ pcd.orient_normals_consistent_tangent_plane(k)
 pcd.normals = o3d.utility.Vector3dVector(-np.asarray(pcd.normals))
 
 # Créer le maillage 3D à partir du nuage de points
-mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=7) # depth = 12
+mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=12) # depth = 12
 
 # Supprimer les sommets dont la densité est inférieure au seuil
 densities = np.asarray(densities)
-seuil = np.percentile(densities,87) #2
+seuil = np.percentile(densities,100) #2
 mesh.remove_vertices_by_mask(densities < seuil)
 
 # conserver la plus grande composante connexe 

@@ -1,0 +1,88 @@
+import trimesh
+import numpy as np
+import xatlas
+import matplotlib.pyplot as plt
+import os
+
+os.makedirs('seamless/more_complex/npy', exist_ok=True)
+os.makedirs('seamless/more_complex/png', exist_ok=True)
+
+np.random.seed(42)
+
+# Création d'un plan subdivisé 10x10 (mesh plus complexe)
+grid_size = 10
+x, y = np.meshgrid(np.linspace(0, 1, grid_size + 1), np.linspace(0, 1, grid_size + 1))
+vertices = np.stack([x.flatten(), y.flatten(), np.zeros_like(x.flatten())], axis=1)
+
+faces = []
+for i in range(grid_size):
+    for j in range(grid_size):
+        idx = i * (grid_size + 1) + j
+        faces.append([idx, idx + 1, idx + grid_size + 1])
+        faces.append([idx + 1, idx + grid_size + 2, idx + grid_size + 1])
+faces = np.array(faces)
+
+# Couleurs contrastées aléatoires pour chaque sommet
+colors = np.random.randint(0, 256, size=(vertices.shape[0], 3)).astype(np.float32)
+
+# UV mapping
+mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
+uvs = 1 - (uvs[:, [1, 0]])  # invert Y
+np.save('seamless/more_complex/npy/mapping.npy', vmapping)
+np.save('seamless/more_complex/npy/indices.npy', indices)
+np.save('seamless/more_complex/npy/uvs.npy', uvs)
+mesh.export('seamless/more_complex/npy/mesh.obj')
+
+def create_view_image(vertices, faces, colors, image_size=512, brightness_factor=1.0):
+    image = np.zeros((image_size, image_size, 3), dtype=np.uint8)
+    projected = vertices[:, :2].copy()
+    projected[:, 0] *= (image_size - 1)
+    projected[:, 1] *= (image_size - 1)
+
+    for face in faces:
+        v0, v1, v2 = projected[face].astype(np.float32)
+        c0, c1, c2 = colors[face]
+
+        min_x = max(int(np.floor(min(v0[0], v1[0], v2[0]))), 0)
+        max_x = min(int(np.ceil(max(v0[0], v1[0], v2[0]))), image_size - 1)
+        min_y = max(int(np.floor(min(v0[1], v1[1], v2[1]))), 0)
+        max_y = min(int(np.ceil(max(v0[1], v1[1], v2[1]))), image_size - 1)
+
+        T = np.array([
+            [v1[0] - v0[0], v2[0] - v0[0]],
+            [v1[1] - v0[1], v2[1] - v0[1]]
+        ])
+        if np.linalg.det(T) == 0:
+            continue
+
+        T_inv = np.linalg.inv(T)
+
+        for y in range(min_y, max_y + 1):
+            for x in range(min_x, max_x + 1):
+                p = np.array([x - v0[0], y - v0[1]])
+                u, v = T_inv @ p
+                w = 1 - u - v
+                if 0 <= u <= 1 and 0 <= v <= 1 and 0 <= w <= 1:
+                    color = u * c1 + v * c2 + w * c0
+                    color = np.clip(color * brightness_factor, 0, 255)
+                    image[y, x] = color.astype(np.uint8)
+    return image
+
+Vue1 = create_view_image(vertices, faces, colors, 512, 0.5)
+Vue2 = create_view_image(vertices, faces, colors, 512, 1.2)
+Vue3 = create_view_image(vertices, faces, colors, 512, 1.8)
+
+np.savez('seamless/more_complex/npy/images.npz', Vue1=Vue1, Vue2=Vue2, Vue3=Vue3)
+
+images = [Vue1, Vue2, Vue3]
+titles = ['Luminosité x 0.5', 'Luminosité x 1.2', 'Luminosité x 1.8']
+plt.figure(figsize=(15, 5))
+for i, (img, title) in enumerate(zip(images, titles), 1):
+    plt.subplot(1, 3, i)
+    plt.imshow(img)
+    plt.axis('off')
+    plt.title(f'Image {i} - {title}')
+plt.imsave('seamless/more_complex/png/3_views.png', np.concatenate(images, axis=1))
+plt.tight_layout()
+plt.show()

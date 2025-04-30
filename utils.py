@@ -84,3 +84,28 @@ def closest_point_to_two_lines(ro1, rd1, ro2, rd2):
     p2 = ro2 + t2 * rd2
 
     return (p1 + p2) / 2.0, np.linalg.norm(p2 - p1)
+
+
+def barycentric_coordinates(p, A, B, C):
+    v0, v1, v2 = B - A, C - A, p - A #chaque cote du triange
+    d00, d01, d11 = np.dot(v0, v0), np.dot(v0, v1), np.dot(v1, v1)
+    d20, d21 = np.dot(v2, v0), np.dot(v2, v1)
+
+    denom = d00 * d11 - d01 * d01
+    v = (d11 * d20 - d01 * d21) / denom 
+    w = (d00 * d21 - d01 * d20) / denom
+    u = 1.0 - v - w 
+    
+    return v, w, u
+
+
+def bilinear_interpolate(image, x, y):
+    x0 = int(np.floor(x))
+    x1 = min(x0 + 1, image.shape[1] - 1)
+    y0 = int(np.floor(y))
+    y1 = min(y0 + 1, image.shape[0] - 1)
+    wx = x - x0
+    wy = y - y0
+    top = (1 - wx) * image[y0, x0] + wx * image[y0, x1]
+    bottom = (1 - wx) * image[y1, x0] + wx * image[y1, x1]
+    return ((1 - wy) * top + wy * bottom).astype(np.uint8)
