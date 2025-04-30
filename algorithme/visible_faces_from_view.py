@@ -5,7 +5,9 @@ from backprojection import back_projeter
 from tqdm import tqdm
 
 
-import multiprocessing as mp
+from multiprocessing import Pool
+from functools import partial
+
 
 def is_face_in_the_camera_direction(normale_face, normale_image, cos_theta_max:float=0) :
     """Renvoie True si la face est dans le meme sens que la camera depuis la vue donnee, False sinon""" 
@@ -21,6 +23,7 @@ def get_visible_faces(vertices, triangles, triangle_normals,     # mesh 3D
     Renvoie un np array de 0 et de 1 ou chaque case correspond a la visibilite d'une face du meme indice 
     /!\ Ne regarde que si le centre de chaque triangle est visible
     """
+
     n_cam = n_l if type_camera=="l" else n_r
     n_monde = rot.T @ n_cam 
 
@@ -87,8 +90,12 @@ def reconstruct_visible_mesh(original_mesh,
 
     return visible_mesh
 
+def compute_visibility(args, vertices, triangles, triangle_normals, type_camera, cos_theta_max):
+    j, rot_image, t_image = args
+    visible = get_visible_faces(vertices, triangles, triangle_normals, rot_image, t_image, type_camera, cos_theta_max)
+    return j, visible
 
-def build_Mpj(mesh, transforms, type_camera) :
+def build_Mpj(mesh, rot_images, t_images, type_camera, cos_theta_max=0) :
     """
     Genere la matrice Mpj ou p represente la face, et j la vue
     Mpj = True si la face p est visible sur la vue j, 0 sinon
@@ -103,11 +110,23 @@ def build_Mpj(mesh, transforms, type_camera) :
     triangles = np.asarray(mesh.triangles) # tableau de tableau de taille 3 : shape (N_tri, 3)
     triangle_normals = np.asarray(mesh.triangle_normals) # tableau de vecteurs : shape (N_tri, 3)
     N_tri = len(triangles)
-    N_views = len(transforms)
+    N_views = len(rot_images)
     Mpj = np.zeros((N_tri, N_views), dtype=np.bool)
-    for j in tqdm(range(N_views)) :
-        rot, t = transforms[j]
-        Mpj[:, j] = get_visible_faces(vertices, triangles, triangle_normals, rot, t, type_camera)
+    args = [(j, rot_images[j], t_images[j]) for j in range(N_views)]
+    with Pool(24) as p:
+        for j, visible in tqdm(p.imap_unordered(
+            partial(
+                compute_visibility, 
+                vertices=vertices,
+                triangles=triangles,
+                triangle_normals=triangle_normals,
+                type_camera=type_camera,
+                cos_theta_max=cos_theta_max
+            ), 
+            args,
+            chunksize=1
+        ), total=N_views) :
+            Mpj[:, j] = visible     
     return Mpj
 
 #if __name__ == "__main__" :
