@@ -1,0 +1,24 @@
+
+
+
+    # -- Etape 1 -- filtration par extraction des faces dans la bonne direction
+    # -- Etape 2 -- Retro-projection du centre de chaque triangle dans la bonne direction
+    rays_to_faces = np.zeros((K, 6), dtype=np.float64) # pour chaque triangle, r0 et rd seront stockes
+    # rays_to_faces contiendra r0=0,rd=0 pour les triangles mal orientes
+    # d'abord on stocke tous les X dans la bonne direction, puis on retroprojecte tout 
+    all_X = np.zeros((K, 3), dtype=np.float64)
+    for p in range(K) :
+        # filtration par extraction des faces dans la bonne direction
+        tri = triangles[p]
+        X_center = vertices[tri].mean(axis=0) # centre de la face
+        all_X[p] = X_center
+    # back_projection
+    all_r0rd = [back_projeter(X, rot, t, type_camera) for X in all_X] 
+    # stockage
+    for p in range(K) :
+        normal = triangle_normals[p, :]
+        if is_face_in_the_camera_direction(normal, n_monde, cos_theta_max_pre_filtrage) : 
+            _, r0, rd =  all_r0rd[p]
+            rays_to_faces[p, :] = np.concatenate([np.array(r0), np.array(rd)])  
+
+    # -- Etape 3 -- Ray-tracing de chaque rayon visant une face
