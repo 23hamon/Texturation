@@ -41,6 +41,7 @@ if __name__ == "__main__" :
     N = 52
     for j in range(N) :
         rot, t = get_image_data(j+1)
+<<<<<<< Updated upstream
         rot_images.append(rot)
         t_images.append(t)
     rot_images = np.array(rot_images)
@@ -49,4 +50,12 @@ if __name__ == "__main__" :
     o3d.visualization.draw_geometries([new_mesh])
     o3d.io.write_triangle_mesh("ply/mesh_cailloux_luca_CLEAN.ply", new_mesh)
     new_Mpj = build_Mpj(new_mesh, rot_images, t_images, "l")
+=======
+        transforms.append((rot, t)) 
+    Mpj = build_Mpj(mesh, transforms, "l")
+    new_mesh = clean_mesh(mesh, Mpj)
+    o3d.visualization.draw_geometries([new_mesh])
+    o3d.io.write_triangle_mesh("ply/mesh_cailloux_luca_CLEAN.ply", new_mesh)
+    new_Mpj = build_Mpj(new_mesh, transforms, "l")
+>>>>>>> Stashed changes
     np.save("tensors/Mpj.npy", new_Mpj)
