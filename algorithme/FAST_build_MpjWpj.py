@@ -143,15 +143,16 @@ def _build_Mpj_cam(mesh, K, N, r0_rd_for_good_p) :
     vertices = np.asarray(mesh.vertices)
     triangles = np.asarray(mesh.triangles)
     args = list(range(N))
-    with Pool(24) as p:
-        for j, are_triangles_visible in tqdm(p.imap_unordered(
-            partial(
+    _f = partial(
                 _get_visible_faces,
                 K=K,
                 vertices=vertices,
                 triangles=triangles,
                 r0_rd_for_good_p=r0_rd_for_good_p
-            ),
+            )
+    with Pool(24) as p:
+        for j, are_triangles_visible in tqdm(p.imap_unordered(
+            _f,
             args,
             chunksize=1
         ), total=N) :
@@ -369,9 +370,9 @@ if __name__ == "__main__" :
     rot_images = np.array(rot_images)
     t_images = np.array(t_images)
 
-    original_mesh = o3d.io.read_triangle_mesh("ply/mesh_cailloux_luca_LOW.ply")
+    original_mesh = o3d.io.read_triangle_mesh("ply/mesh_cailloux_luca_high.ply")
    
-    mesh_clean, Mpj_cam, Wpj_cam = clean_and_build_Mpj_Wpj_cam(original_mesh, N, rot_images, t_images, n_r, n_l, -0.1, 1e9)
+    mesh_clean, Mpj_cam, Wpj_cam = clean_and_build_Mpj_Wpj_cam(original_mesh, N, rot_images, t_images, n_r, n_l, -0.2, 1e9)
     
     np.save("tensors/Mpj_cam.npy", Mpj_cam)
     np.save("tensors/Wpj_cam.npy", Wpj_cam)
