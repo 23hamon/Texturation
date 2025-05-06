@@ -302,7 +302,10 @@ if __name__ == "__main__":
     # Chargement du tensor M_final
     M_final = np.load("tensors/M_final_l.npy")
 
-    # --- Chargement et prép + 1)
+    # --- Chargement et préparation du mesh ---
+    mesh = trimesh.load("ply/mesh_cailloux_luca_CLEAN.ply")
+    vmapping, indices, uvs = xatlas.parametrize(mesh.vertices, mesh.faces)
+    faces = mesh.faces
     vertices = mesh.vertices
 
     # Exportation du maillage paramétré
@@ -448,6 +451,6 @@ if __name__ == "__main__":
     texture_map.save("map_original.png")
 
     # Sauvegarde des textures et du masque UV
-    np.save("final_texture.npy", final_texture)
+    np.save("texture_seamless.npy", final_texture)
     np.save("texture_map.npy", map_texture)
     np.save("uv_mask.npy", uv_mask)

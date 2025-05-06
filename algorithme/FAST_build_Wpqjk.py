@@ -1,3 +1,6 @@
+__author__ = "Jules Imbert"
+__date__ = "2025-05-06"
+
 from backprojection import back_projeter
 from utils import get_image_data, sqrt_newton
 from main_func import compute_edges
@@ -15,6 +18,11 @@ import gc
 from multiprocessing import Pool
 from functools import partial
 import ctypes
+
+# Note : 
+# Il y a un probleme de surcharge memoire, on utilise donc shelve pour stocker le resultat.
+import shelve 
+
 
 def invert_dict(d):
     new_d = defaultdict(list)
@@ -135,7 +143,6 @@ def build_Wpqjk(N, Vjyxc_cam,
             if Mpj_cam[p, real_j, cam_j] or Mpj_cam[q, real_j, cam_j] : 
                 view_to_is_edge_visible[j, idx] = True # l'une des deux faces est visible sur la vue j
 
-
     # -- ETAPE 3 -- Retroprojection sur chaque vue du tableau contenant toutes les aretes
     print("-- ETAPE 3 -- Retroprojection sur chaque vue du tableau contenant toutes les aretes")
     j_to_all_Y_l = dict()
@@ -162,22 +169,49 @@ def build_Wpqjk(N, Vjyxc_cam,
     # gc.collect()
     # ctypes.CDLL("libc.so.6").malloc_trim(0)
 
+    # time.sleep(60)
+    # np.save("tensors/j_to_all_Y_l.npy", j_to_all_Y_l, allow_pickle=True)
+    # np.save("tensors/j_to_all_Y_r.npy", j_to_all_Y_r, allow_pickle=True)
+    # print("stop")
+    # raise KeyboardInterrupt
+
+    # j_to_all_Y_l = np.load("tensors/j_to_all_Y_l.npy", allow_pickle=True).item()
+    # j_to_all_Y_r = np.load("tensors/j_to_all_Y_r.npy", allow_pickle=True).item()
+    # print(len(j_to_all_Y_l), len(j_to_all_Y_r))
+
     # -- ETAPE 4 -- Integration sur les aretes retro projetees
+    # VERSION AVEC LE STOCKAGE DANS LE DISQUE (shlve)
     print("ETAPE 4 -- Integration sur les aretes retro projetees")
-    for idx, (p, q) in tqdm(enumerate(Wpqjk_cam), total=N_edges):
-        for j in range(2*N) :
-            for k in range(2*N) :
-                #print(j, k)
-                if j != k :
-                    if ((j < N and Mpj_cam[p, j%N, 0]) or (j >= N and Mpj_cam[p, j%N, 1])) and \
-                        ((k < N and Mpj_cam[q, k%N, 0]) or (k >= N and Mpj_cam[q, k%N, 1])) :
-                        #print(j, k, "  ")
-                        Y_pqj = j_to_all_Y_l[j][idx] if j < N else j_to_all_Y_r[j-N][idx] # (N_integration, 2) 
-                        Y_pqk = j_to_all_Y_l[k][idx] if k < N else j_to_all_Y_r[k-N][idx]
-                        y = _weight_seam(Vjyxc_cam, N, Y_pqj, Y_pqk, j, k, N_integration)
-                        integr = trapezoidal_integration(linspace_t, y)
-                        Wpqjk_cam[(p, q)][(j, k)] = Wpq_len_X1X2[(p,q)] * integr
-    return Wpqjk_cam
+    with shelve.open("tensors/Wpqjk_cam.db") as db :
+        for idx, (p, q) in tqdm(enumerate(edges_set), total=N_edges) :
+            inner_dict = {}
+            for j in range(2*N) :
+                for k in range(2*N) :
+                    #print(j, k)
+                    if j != k :
+                        if ((j < N and Mpj_cam[p, j%N, 0]) or (j >= N and Mpj_cam[p, j%N, 1])) and \
+                            ((k < N and Mpj_cam[q, k%N, 0]) or (k >= N and Mpj_cam[q, k%N, 1])) :
+                            #print(j, k, "  ")
+                            Y_pqj = j_to_all_Y_l[j][idx] if j < N else j_to_all_Y_r[j-N][idx] # (N_integration, 2) 
+                            Y_pqk = j_to_all_Y_l[k][idx] if k < N else j_to_all_Y_r[k-N][idx]
+                            y = _weight_seam(Vjyxc_cam, N, Y_pqj, Y_pqk, j, k, N_integration)
+                            integr = trapezoidal_integration(linspace_t, y)
+                            inner_dict[(j, k)] = Wpq_len_X1X2[(p,q)] * integr
+            db[f"{p},{q}"] = inner_dict
+    
+    # # VERSION AVEC LE STOCKAGE EN RAM 
+    # for idx, (p, q) in tqdm(enumerate(edges_set), total=N_edges) :
+    #     for j in range(2*N) :
+    #         for k in range(2*N) :
+    #             if j != k :
+    #                 if ((j < N and Mpj_cam[p, j%N, 0]) or (j >= N and Mpj_cam[p, j%N, 1])) and \
+    #                     ((k < N and Mpj_cam[q, k%N, 0]) or (k >= N and Mpj_cam[q, k%N, 1])) :
+    #                     Y_pqj = j_to_all_Y_l[j][idx] if j < N else j_to_all_Y_r[j-N][idx] # (N_integration, 2) 
+    #                     Y_pqk = j_to_all_Y_l[k][idx] if k < N else j_to_all_Y_r[k-N][idx]
+    #                     y = _weight_seam(Vjyxc_cam, N, Y_pqj, Y_pqk, j, k, N_integration)
+    #                     integr = trapezoidal_integration(linspace_t, y)
+    #                     Wpqjk_cam[(p,q)][(j, k)] = Wpq_len_X1X2[(p,q)] * integr
+    # return Wpqjk_cam
 
     
     
@@ -207,9 +241,9 @@ if __name__ == "__main__" :
     print(f"Matrices de rotations chargées (shape : {rot_images.shape}), vecteurs de translation chargés : {t_images.shape}")
 
     # mesh
-    mesh = o3d.io.read_triangle_mesh("ply/LOW_CLEAN_MESH.ply")
+    mesh = o3d.io.read_triangle_mesh("ply/clean_mesh_cailloux_luca_depth9.ply")
     # visibilite des faces
-    Mpj_cam = np.load("tensors/Mpj_cam.npy")
+    Mpj_cam = np.load("tensors/Mpj_cam_final.npy")
     print(f"Mpj_cam ouvert : {Mpj_cam.shape}")
 
     # edges
@@ -219,8 +253,7 @@ if __name__ == "__main__" :
     edges_set = compute_edges(triangles)
     print(f"Nombre d'edges : {len(edges_set)}")
 
+    print("Calcul du cout croise")
     Wpqjk_cam = build_Wpqjk(N, Vjyxc_cam, rot_images, t_images, vertices, edges_set, Mpj_cam, 10)
-    np.save('tensors/Wpqjk_cam.npy', Wpqjk_cam, allow_pickle=True)
 
-    print(Wpqjk_cam[(0,7)])
 

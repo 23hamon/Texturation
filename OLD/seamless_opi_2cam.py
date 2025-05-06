@@ -289,7 +289,7 @@ if __name__ == "__main__":
     views = {i: Vjyxc_to_103[i] for i in range(Vjyxc_to_103.shape[0])}
 
     # Chargement du tensor M_final
-    M_final = np.load("tensors/M_final_l.npy")
+    M_final = np.load("tensors/M_final.npy")
 
     # --- Chargement et préparation du mesh ---
     mesh = trimesh.load("ply/LOW_CLEAN_MESH.ply")

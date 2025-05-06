@@ -1,3 +1,6 @@
+__author__ = "Jules Imbert"
+__date__ = "2025-05-06"
+
 # Construit simultanement Mpj et Wpj pour optimiser les performances
 # en ne retroprojectant qu'une fois
 import numpy as np
@@ -12,6 +15,10 @@ from tqdm import tqdm
 from multiprocessing import Pool
 from functools import partial
 import multiprocessing
+
+import ctypes
+import multiprocessing
+import gc
 
 
 # Cette partie du code construit r0_rd_for_good_p, qui contient les rayons de chaque "bonne" face
@@ -370,19 +377,19 @@ if __name__ == "__main__" :
     rot_images = np.array(rot_images)
     t_images = np.array(t_images)
 
-    original_mesh = o3d.io.read_triangle_mesh("ply/mesh_cailloux_luca_LOW.ply")
+    original_mesh = o3d.io.read_triangle_mesh("ply/final_mesh_cailloux_luca_depth9.ply")
    
     mesh_clean, Mpj_cam, Wpj_cam = clean_and_build_Mpj_Wpj_cam(original_mesh, N, rot_images, t_images, n_r, n_l, -0.2, 1e9)
     
-    np.save("tensors/Mpj_cam.npy", Mpj_cam)
-    np.save("tensors/Wpj_cam.npy", Wpj_cam)
+    np.save("tensors/Mpj_cam_final.npy", Mpj_cam)
+    np.save("tensors/Wpj_cam_final.npy", Wpj_cam)
 
 
     # are_triangle_visible_l = Mpj_cam[:, 35, 0]
     # visible_mesh = reconstruct_visible_mesh(original_mesh, are_triangle_visible_l)
     # o3d.visualization.draw_geometries([visible_mesh])
     o3d.visualization.draw_geometries([mesh_clean])
-    o3d.io.write_triangle_mesh("ply/LOW_CLEAN_MESH.ply", mesh_clean)
+    o3d.io.write_triangle_mesh("ply/clean_mesh_cailloux_luca_depth9.ply", mesh_clean)
     print(f"mesh_clean.triangles : ({np.asarray(mesh_clean.triangles).shape}), \
           Mpj_cam : ({Mpj_cam.shape}), Wpj_cam : ({Wpj_cam.shape})")
     are_triangle_visible_l = Mpj_cam[:, 35, 0]

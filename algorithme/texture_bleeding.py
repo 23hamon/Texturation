@@ -1,3 +1,6 @@
+__author__ = "Clemence Hamon"
+__date__ = "2025-05-06"
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt

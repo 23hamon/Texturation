@@ -1,3 +1,6 @@
+__author__ = "Jules Imbert"
+__date__ = "2025-05-06"
+
 from utils import distance_X_to_D_r0_rd, get_image_data, FASTr0_rd
 import numpy as np
 from scipy.optimize import least_squares

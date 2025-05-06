@@ -1,3 +1,6 @@
+__author__ = "Jules Imbert"
+__date__ = "2025-05-06"
+
 import numpy as np
 
 def compute_edges(Fi) :

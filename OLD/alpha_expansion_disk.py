@@ -11,8 +11,10 @@ from utils import get_image_data
 
 from tqdm import tqdm
 
+# CETTE VERSION DU CODE UTILISE LE STOCKAGE DE Wpqjk_cam SUR LE DISQUE
+# UTILISER CETTE VERSION POUR LES GROS MESH MAIS SEULEMENT SI LE POIDS DU DICTIONNAIRE
+# Wpqjk_cam EST TROP GROS POUR ETRE CHARGE EN RAM
 import shelve
-
 # -- NOMS DE VARIABLES --
 
 # - IMAGES
@@ -49,7 +51,7 @@ import shelve
 
 
 def full_Wpqjk(p, q, j, k,
-               N, Mpj_cam, Wpqjk_cam,
+               Mpj_cam, Wpqjk_cam, N,
                float_inf) :
     """
     Renvoie le cout croise entre deux faces pour deux vues
@@ -62,28 +64,41 @@ def full_Wpqjk(p, q, j, k,
         if j == k :
             return 0.
         elif p < q :
-            return Wpqjk_cam[(p, q)][(j, k)]
+            with shelve.open("tensors/Wpqjk_cam.db") as db:
+                sub_dict = db[f"{p},{q}"]
+                return sub_dict[(j, k)]
         else :
-            return Wpqjk_cam[(q, p)][(k, j)]
+            with shelve.open("tensors/Wpqjk_cam.db") as db:
+                sub_dict = db[f"{q},{p}"]
+                return sub_dict[(k, j)]
     else :
         return float_inf
            
+def sum_full_Wpqjk(M, N, Mpj_cam, edges_set, float_inf) :
+    _sum = 0
+    with shelve.open("tensors/Wpqjk_cam.db") as db:
+        for _, (p, q) in tqdm(enumerate(edges_set), total=len(edges_set)) :
+            j = M[p]
+            k = M[q]
+            if Mpj_cam[p, j%N, j//N] and Mpj_cam[q, k%N, k//N] :
+                if j != k :
+                    _sum += db[f"{p},{q}"][(j, k)]
+    return _sum
+                 
 
 def E_Q(M, 
         K, Wpj_cam) :
     return sum([Wpj_cam[p, M[p]%N, M[p]//N] for p in range(K)])
 
 def E_S(M,
-        N, edges_set, Mpj_cam, Wpqjk_cam, 
+        edges_set, Mpj_cam, Wpqjk_cam, 
         float_inf) :
-    return sum([full_Wpqjk(p, q, M[p], M[q],
-                           N, Mpj_cam, Wpqjk_cam, float_inf)
-                           for _, (p, q) in enumerate(edges_set)])
-
+    return sum_full_Wpqjk(M, N, Mpj_cam, edges_set, float_inf)
+ 
 def E(M,
-      K, N, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam,
+      K, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam,
       float_inf, llambda=1) :
-    return E_Q(M, K, Wpj_cam) + llambda * E_S(M, N, edges_set, Mpj_cam, Wpqjk_cam, float_inf)
+    return E_Q(M, K, Wpj_cam) + llambda * E_S(M, edges_set, Mpj_cam, Wpqjk_cam, float_inf)
 
 # Optimisation de l'energie avec alpha-expansion
 
@@ -122,19 +137,19 @@ def _generate_G_alpha(M, alpha,
     for _, (p, q) in enumerate(edges_set) : # noeuds speciaux
         if M[p] != M[q] :
             a = special_nodes[(p, q)]
-            weight_t_a_alpha_bar = full_Wpqjk(p, q, M[p], M[q], N, Mpj_cam, Wpqjk_cam, float_inf)
+            weight_t_a_alpha_bar = full_Wpqjk(p, q, M[p], M[q], Mpj_cam, Wpqjk_cam, N, float_inf)
             G_alpha.add_edge(a, "alpha_bar", weight=weight_t_a_alpha_bar) # t{a, alpha_bar}
             #print(f"t-link - t[a({p},{q}), alpha_bar] (idx={a}) : {weight_t_a_alpha_bar}")
     # n-links : connecter les pixels voisins 
     for _, (p, q) in enumerate(edges_set) :
         if M[p] == M[q] :
-            weight_e_p_q = full_Wpqjk(p, q, M[p], alpha, N, Mpj_cam, Wpqjk_cam, float_inf)
+            weight_e_p_q = full_Wpqjk(p, q, M[p], alpha, Mpj_cam, Wpqjk_cam, N, float_inf)
             G_alpha.add_edge(p, q, weight=weight_e_p_q) # e{p,q}
             #print(f"n-link - n({p},{q}) : {weight_e_p_q}")
         else :
             a = special_nodes[(p, q)]
-            weight_e_p_a = full_Wpqjk(p, q, M[p], alpha, N, Mpj_cam, Wpqjk_cam, float_inf)
-            weight_e_a_q = full_Wpqjk(p, q, alpha, M[q], N, Mpj_cam, Wpqjk_cam, float_inf)
+            weight_e_p_a = full_Wpqjk(p, q, M[p], alpha, Mpj_cam, Wpqjk_cam, N, float_inf)
+            weight_e_a_q = full_Wpqjk(p, q, alpha, M[q], Mpj_cam, Wpqjk_cam, N, float_inf)
             G_alpha.add_edge(p, a, weight=weight_e_p_a) # e{p,a}
             G_alpha.add_edge(a, q, weight=weight_e_a_q) # e{a,q}
             #print(f"n-link - n[a({p},{q}), {q}] (idx={a}) : {weight_e_a_q}")
@@ -177,7 +192,7 @@ def alpha_expansion(N, K, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, float_inf=np.i
             ])
         )
         for p in range(K)])
-    current_cost = E(M, K, N, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, float_inf)
+    current_cost = E(M, K, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, float_inf)
     print(f"M_init = {M}, cost = {current_cost}")
     is_improving = True
     while is_improving :
@@ -186,12 +201,12 @@ def alpha_expansion(N, K, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, float_inf=np.i
             M_star, cost_M_star = _get_best_M_alpha(M, alpha, K, N, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, float_inf)
             # hypothese : parfois il n'y a pas de coupe minimale finie possible, mais il en calcule une quand meme, 
             # et etrangement son poids n'est pas infini
-            if cost_M_star < current_cost and E(M_star, K, N, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, float_inf) < current_cost : 
+            if cost_M_star < current_cost : #and E(M_star, K, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, float_inf) < current_cost : 
             # parfois different du poids de la coupe
                 is_improving = True
                 M = M_star
                 current_cost = cost_M_star
-        print(f"Passe de alpha terminee. M = {M}, cost = {current_cost} (E_S = {E_S(M, N, edges_set, Mpj_cam, Wpqjk_cam, float_inf)}, E_Q = {E_Q(M, K, Wpj_cam)})")
+        print(f"Passe de alpha terminee. M = {M}, cost = {current_cost}")# (E_S = {E_S(M, edges_set, Mpj_cam, Wpqjk_cam, float_inf)}, E_Q = {E_Q(M, K, Wpj_cam)})")
     return M
 
 if __name__ == "__main__" :
@@ -213,11 +228,7 @@ if __name__ == "__main__" :
     # visibilite des faces
     Mpj_cam = np.load("tensors/Mpj_cam_final.npy")
     Wpj_cam = np.load("tensors/Wpj_cam_final.npy")
-
-
-    #Wpqjk_cam = np.load("tensors/Wpqjk_cam_final.npy", allow_pickle=True).item()
-
-
+    Wpqjk_cam = None
 
     # edges
     triangles = np.asarray(mesh.triangles)
@@ -226,58 +237,11 @@ if __name__ == "__main__" :
     edges_set = compute_edges(triangles)
     print(f"Nombre d'edges : {len(edges_set)}")
 
-    with shelve.open("tensors/Wpqjk_cam.db") as db:
-        Wpqjk_cam = dict()
-        for _, (p, q) in tqdm(enumerate(edges_set), total=len(edges_set)) :
-            Wpqjk_cam[(p, q)] = db[f"{p},{q}"]
-
     M_final = alpha_expansion(N, K, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, 1e9)
     print(M_final)
-    print(f"E(M_final) = {E(M_final, K, N, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, 1e9)}")
+    print(f"E(M_final) = {E(M_final, K, edges_set, Mpj_cam, Wpj_cam, Wpqjk_cam, 1e9)}")
     np.save("tensors/M_final_depth9.npy", M_final)
 
-    # print("comparaison de M et W")
-    # for p in range(K) :
-    #     for j in range(N) :
-    #         if Mpj[p, j] != Mpj_copy[p, j] :
-    #             print(f"Mpj : ancien = {Mpj_copy[p, j]}, nao = {Mpj[p, j]}")
-    #         if Wpj[p, j] != Wpj_copy[p, j] :
-    #             print(f"Mpj : ancien = {Wpj_copy[p, j]}, nao = {Wpj[p, j]}")
-    # print(f"M1050,51 = {Mpj[1050,51]}, W1050,51 = {Wpj[1050,51]}")
-
-    # invalid_p_list = invalid_p(K, M_final, Mpj)
-    # print(f"pixels invalides dans le nouveau M : {invalid_p_list}")
-    # print(f"labels des pixels invalides : {[M_final[p] for p in invalid_p_list]}")
-    # print(f"poids des pixels invalides : {[f'W{p},{M_final[p]} = {Wpj[p, M_final[p]]}' for p in invalid_p_list]}")
-
-    # def test() :
-    #     # data
-    #     vertices = np.array([[0,0,0],[1,1,0],[1,0,0],[2,1,0],[2,0,0],[3,1,0]], dtype=np.float64)
-    #     triangles = np.array([[0,1,2],[1,2,3],[2,3,4],[3,4,5]])
-    #     mesh = o3d.geometry.TriangleMesh()
-    #     mesh.vertices = o3d.utility.Vector3dVector(vertices)
-    #     mesh.triangles = o3d.utility.Vector3iVector(triangles)
-
-        
-    #     K = len(triangles)
-    #     N = 3
-    #     edges_set = compute_edges(triangles)
-    #     print(edges_set)
-    #     M = np.array([0,1,1,2])
-    #     alpha = 2
-    #     views_set ={(0,1),(0,2), (1,0), (1,2), (2,0), (2,1)}
-    #     Wpqjk = {(p,q) : {(j, k) : 10*p + q + 0.1 * j + 0.01 * k for _, (j, k) in enumerate(views_set)} for _, (p,q) in enumerate(edges_set)}
-    #     Wpj = np.array([[101,102,103],
-    #                     [201,202,203],
-    #                     [301,302,303],
-    #                     [401,402,403]])
-    #     Mpj = np.full((4,3), True)
-    #     float_inf=1e9
-    #     G_alpha = _generate_G_alpha(M, alpha, K, edges_set, Wpqjk, Mpj, Wpj, float_inf)
-    #     nxG_alpha = G_alpha.get_nx_graph()
-    #     print(f"nodes : {list(nxG_alpha.nodes)}")
-    #     print(f"edges : {nxG_alpha.edges(data=True)}")
-    # test()
 
 
    
