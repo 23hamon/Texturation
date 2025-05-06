@@ -24,7 +24,7 @@ N = 52
 h, w = 2000, 3000
 
 if __name__ == "__main__" :
-    multiprocessing.set_start_method('spawn')
+    multiprocessing.set_start_method('forkserver')
 
     # ouverture des transformations image
     rot_images = []

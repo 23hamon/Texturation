@@ -10,6 +10,7 @@ import open3d as o3d
 from tqdm import tqdm
 from collections import defaultdict
 
+import time
 import gc
 from multiprocessing import Pool
 from functools import partial
@@ -72,7 +73,7 @@ def _weight_seam(Vjyxc_cam, N,
                                    for i in range(N_integration)])
 
 
-def _build_all_y(args): #, all_X, N_edges, N_integration) :
+def _build_all_y(args, all_X, N_edges, N_integration): #, all_X, N_edges, N_integration) :
     """
     Retroprojecte sur une vue donnee l'ensemble des aretes visibles
     **Input : **
@@ -80,7 +81,7 @@ def _build_all_y(args): #, all_X, N_edges, N_integration) :
         - view_to_is_edge_visible : shape (N_edge, 2)
                                     pour chaque edge, dit si elle est visible depuis la vue en question
     """
-    j, rot_j, t_j, view_to_is_edge_visible_l, view_to_is_edge_visible_r, all_X, N_edges, N_integration = args
+    j, rot_j, t_j, view_to_is_edge_visible_l, view_to_is_edge_visible_r = args
     all_Y_l = np.zeros((N_edges, N_integration, 2))
     all_Y_r = np.zeros((N_edges, N_integration, 2))
     for idx_edge in range(N_edges) :
@@ -141,16 +142,15 @@ def build_Wpqjk(N, Vjyxc_cam,
     j_to_all_Y_r = dict()
     all_X = np.array([Wpq_X1X2[(p, q)] for _, (p, q) in enumerate(Wpq_X1X2)]) # (N_edges, N_integration, 3)
     # parcours parallele de l'ensemble des vues
-    args = [(j, rot_images[j], t_images[j], view_to_is_edge_visible[j], view_to_is_edge_visible[j+N],
-             all_X, N_edges, N_integration) for j in range(N)]
-    with Pool(24) as p:
+    args = [(j, rot_images[j], t_images[j], view_to_is_edge_visible[j], view_to_is_edge_visible[j+N])
+            for j in range(N)]
+    _f = partial(_build_all_y,
+                  all_X=all_X,
+                  N_edges=N_edges,
+                  N_integration=N_integration)
+    with Pool(16) as p:
         for j, all_Y_lr in tqdm(p.imap_unordered(
-            _build_all_y,
-            # partial(_build_all_y,
-            #         all_X=all_X,
-            #         N_edges=N_edges,
-            #         N_integration=N_integration
-            # ),
+            _f,
             args,
             chunksize=1
         ), total=N) :
@@ -158,18 +158,22 @@ def build_Wpqjk(N, Vjyxc_cam,
             j_to_all_Y_l[j] = all_Y_l
             j_to_all_Y_r[j] = all_Y_r
             
-    del all_X, args, Wpq_X1X2, view_to_is_edge_visible
-    gc.collect()
-    ctypes.CDLL("libc.so.6").malloc_trim(0)
+    # del all_X, args, Wpq_X1X2, view_to_is_edge_visible
+    # gc.collect()
+    # ctypes.CDLL("libc.so.6").malloc_trim(0)
 
     # -- ETAPE 4 -- Integration sur les aretes retro projetees
     print("ETAPE 4 -- Integration sur les aretes retro projetees")
+    print(f"Mpj_cam[1, 2, 0] = {Mpj_cam[1, 2, 0]}, Mpj_cam[1486, 51, 0] = {Mpj_cam[1486, 51, 0]}")
     for idx, (p, q) in tqdm(enumerate(Wpqjk_cam), total=N_edges):
+        print(f"p = {p}, q = {q}")
         for j in range(2*N) :
             for k in range(2*N) :
+                #print(j, k)
                 if j != k :
-                    if ((j < N and Mpj_cam[p, j, 0]) or (j >= N and Mpj_cam[p, j-N, 1])) and \
-                        ((k < N and Mpj_cam[q, k, 0]) or (k >= N and Mpj_cam[q, k-N, 1])) :
+                    if ((j < N and Mpj_cam[p, j%N, 0]) or (j >= N and Mpj_cam[p, j%N, 1])) and \
+                        ((k < N and Mpj_cam[q, k%N, 0]) or (k >= N and Mpj_cam[q, k%N, 1])) :
+                        #print(j, k, "  ")
                         Y_pqj = j_to_all_Y_l[j][idx] if j < N else j_to_all_Y_r[j-N][idx] # (N_integration, 2) 
                         Y_pqk = j_to_all_Y_l[k][idx] if k < N else j_to_all_Y_r[k-N][idx]
                         y = _weight_seam(Vjyxc_cam, N, Y_pqj, Y_pqk, j, k, N_integration)
@@ -205,7 +209,7 @@ if __name__ == "__main__" :
     print(f"Matrices de rotations chargées (shape : {rot_images.shape}), vecteurs de translation chargés : {t_images.shape}")
 
     # mesh
-    mesh = o3d.io.read_triangle_mesh("ply/LOW_CLEAN_MESH.ply")
+    mesh = o3d.io.read_triangle_mesh("ply/HIGH_CLEAN_MESH.ply")
     # visibilite des faces
     Mpj_cam = np.load("tensors/Mpj_cam.npy")
     print(f"Mpj_cam ouvert : {Mpj_cam.shape}")
