@@ -10,9 +10,6 @@ import open3d as o3d
 from tqdm import tqdm
 from collections import defaultdict
 
-from multiprocessing import Pool
-from functools import partial
-
 def invert_dict(d):
     new_d = defaultdict(list)
     for (p, q), jk_array in d.items():
@@ -62,17 +59,6 @@ def _weight_seam(Vjyxc,
                                    for i in range(N_integration)])
 
 
-def _build_all_y(args, all_X, N_edges, N_integration) :
-        """
-        Retroprojecte l'ensemble des aretes sur une vue donnee
-        """
-        j, rot_j, t_j = args
-        all_Y = np.zeros((N_edges, N_integration, 2))
-        for idx_edge in range(N_edges) :
-            all_Y[idx_edge, :, :] = np.array([back_projeter(X, rot_j, t_j)[0] for X in all_X[idx_edge]])
-        return all_Y, j
-
-
 def build_Wpqjk(N, K, Vjyxc, cam, 
                 rot_images, t_images, 
                 vertices, edges_set,
@@ -103,29 +89,12 @@ def build_Wpqjk(N, K, Vjyxc, cam,
     print("-- ETAPE 2 -- Retroprojection sur chaque vue du tableau contenant toutes les aretes")
     j_to_all_Y = dict()
     all_X = np.array([Wpq_X1X2[(p, q)] for _, (p, q) in enumerate(Wpq_X1X2)]) # (N_edges, N_integration, 3)
-    
-    # parcours parallele de l'ensemble des vues
-    args = [(j, rot_images[j], t_images[j]) for j in range(N)]
-    with Pool(24) as p:
-        for j, all_Y in tqdm(p.imap_unordered(
-            partial(_build_all_y,
-                    all_X=all_X,
-                    N_edges=N_edges,
-                    N_integration=N_integration
-            ),
-            args,
-            chunksize=1
-        ), total=N) :
+    for j in tqdm(range(N)) :
+        rot_j, t_j = rot_images[j], t_images[j]
+        all_Y = np.zeros((N_edges, N_integration, 2))
+        for idx_edge in range(N_edges) :
+            all_Y[idx_edge, :, :] = np.array([back_projeter(X, rot_j, t_j)[0] for X in all_X[idx_edge]])
             j_to_all_Y[j] = all_Y
-            
-    
-
-    # for j in tqdm(range(N)) :
-    #     rot_j, t_j = rot_images[j], t_images[j]
-    #     all_Y = np.zeros((N_edges, N_integration, 2))
-    #     for idx_edge in range(N_edges) :
-    #         all_Y[idx_edge, :, :] = np.array([back_projeter(X, rot_j, t_j)[0] for X in all_X[idx_edge]])
-    #     j_to_all_Y[j] = all_Y
 
     # -- ETAPE 3 -- Integration sur les aretes retro projetees
     print("ETAPE 3 -- Integration sur les aretes retro projetees")

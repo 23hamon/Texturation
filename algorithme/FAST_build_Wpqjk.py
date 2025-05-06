@@ -164,9 +164,7 @@ def build_Wpqjk(N, Vjyxc_cam,
 
     # -- ETAPE 4 -- Integration sur les aretes retro projetees
     print("ETAPE 4 -- Integration sur les aretes retro projetees")
-    print(f"Mpj_cam[1, 2, 0] = {Mpj_cam[1, 2, 0]}, Mpj_cam[1486, 51, 0] = {Mpj_cam[1486, 51, 0]}")
     for idx, (p, q) in tqdm(enumerate(Wpqjk_cam), total=N_edges):
-        print(f"p = {p}, q = {q}")
         for j in range(2*N) :
             for k in range(2*N) :
                 #print(j, k)
@@ -201,7 +199,7 @@ if __name__ == "__main__" :
     rot_images = []
     t_images = []
     for j in range(N) :
-        rot, t = get_image_data(j+1)
+        rot, t = get_image_data(j)
         rot_images.append(rot)
         t_images.append(t)
     rot_images = np.array(rot_images)
@@ -209,7 +207,7 @@ if __name__ == "__main__" :
     print(f"Matrices de rotations chargées (shape : {rot_images.shape}), vecteurs de translation chargés : {t_images.shape}")
 
     # mesh
-    mesh = o3d.io.read_triangle_mesh("ply/HIGH_CLEAN_MESH.ply")
+    mesh = o3d.io.read_triangle_mesh("ply/LOW_CLEAN_MESH.ply")
     # visibilite des faces
     Mpj_cam = np.load("tensors/Mpj_cam.npy")
     print(f"Mpj_cam ouvert : {Mpj_cam.shape}")

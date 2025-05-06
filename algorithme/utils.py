@@ -179,8 +179,10 @@ def distance_X_to_D_r0_rd(X, r0, rd, decalage_erreur=0):
 
 def get_image_data(image_id=26):
     """
+    /! image_id dans [0, N[
     Renvoie (rot, t) ou rot est la matrice de rotation de la camera, et t son vecteur de translation
     """
+    image_id += 1
     # position de l'image
     with open("absolute_transforms_luca.json") as f :
         data = json.load(f)

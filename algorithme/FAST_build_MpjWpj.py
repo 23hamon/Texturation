@@ -364,13 +364,13 @@ if __name__ == "__main__" :
     rot_images = []
     t_images = []
     for j in range(N) :
-        rot, t = get_image_data(j+1)
+        rot, t = get_image_data(j)
         rot_images.append(rot)
         t_images.append(t)
     rot_images = np.array(rot_images)
     t_images = np.array(t_images)
 
-    original_mesh = o3d.io.read_triangle_mesh("ply/mesh_cailloux_luca_high.ply")
+    original_mesh = o3d.io.read_triangle_mesh("ply/mesh_cailloux_luca_LOW.ply")
    
     mesh_clean, Mpj_cam, Wpj_cam = clean_and_build_Mpj_Wpj_cam(original_mesh, N, rot_images, t_images, n_r, n_l, -0.2, 1e9)
     

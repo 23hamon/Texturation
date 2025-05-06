@@ -30,7 +30,7 @@ if __name__ == "__main__" :
     rot_images = []
     t_images = []
     for j in range(N) :
-        rot, t = get_image_data(j+1)
+        rot, t = get_image_data(j)
         rot_images.append(rot)
         t_images.append(t)
     rot_images = np.array(rot_images)
